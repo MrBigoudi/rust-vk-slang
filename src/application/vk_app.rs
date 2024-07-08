@@ -3,7 +3,10 @@ use std::collections::HashSet;
 use ash::{
     ext::debug_utils,
     khr::{surface, swapchain},
-    vk::{self, PresentModeKHR, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR},
+    vk::{
+        self, CommandBuffer, CommandPool, Extent2D, Format, Image, ImageView, PresentModeKHR,
+        SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR,
+    },
     Device, Entry, Instance,
 };
 
@@ -27,6 +30,14 @@ impl Default for AppParameters {
     }
 }
 
+#[derive(Default, Copy, Clone)]
+pub struct FrameData {
+    pub command_pool: CommandPool,
+    pub command_buffer: CommandBuffer,
+}
+
+pub const FRAME_OVERLAP: usize = 2;
+
 /// Main structure to hold Vulkan application components.
 pub struct VulkanApp {
     pub app_params: AppParameters,
@@ -42,7 +53,15 @@ pub struct VulkanApp {
     pub physical_device: vk::PhysicalDevice,
     pub queue_families: QueueFamilyIndices,
     pub device: Device,
+
     pub swapchain: SwapchainKHR,
+    pub swapchain_images: Vec<Image>,
+    pub swapchain_image_format: Format,
+    pub swapchain_extent: Extent2D,
+    pub swapchain_image_views: Vec<ImageView>,
+
+    pub frames: [FrameData; FRAME_OVERLAP],
+    pub frame_number: usize,
 }
 
 pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [swapchain::NAME.as_ptr()];

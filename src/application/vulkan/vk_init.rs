@@ -43,7 +43,13 @@ impl VulkanApp {
         debug!("Ok\n");
 
         debug!("Init Swapchain...");
-        let swapchain = Self::init_swapchain(
+        let (
+            swapchain,
+            swapchain_images,
+            swapchain_image_format,
+            swapchain_extent,
+            swapchain_image_views,
+        ) = Self::init_swapchain(
             &app_params,
             &instance,
             &device,
@@ -51,6 +57,10 @@ impl VulkanApp {
             &surface_loader,
             &physical_device,
         );
+        debug!("Ok\n");
+
+        debug!("Init Frames...");
+        let (frames, frame_number) = Self::init_frames();
         debug!("Ok\n");
 
         VulkanApp {
@@ -67,6 +77,12 @@ impl VulkanApp {
             queue_families,
             device,
             swapchain,
+            swapchain_images,
+            swapchain_image_format,
+            swapchain_extent,
+            swapchain_image_views,
+            frames,
+            frame_number,
         }
     }
 }
