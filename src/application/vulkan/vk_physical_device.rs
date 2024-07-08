@@ -11,6 +11,7 @@ impl VulkanApp {
     ) -> QueueFamilyIndices {
         let mut queue_families = QueueFamilyIndices {
             graphics_family: None,
+            present_family: None,
         };
         unsafe {
             instance
@@ -21,14 +22,15 @@ impl VulkanApp {
                     let support_graphics = queue_family_properties
                         .queue_flags
                         .contains(vk::QueueFlags::GRAPHICS);
-                    let support_surface = surface_loader
+                    let support_present = surface_loader
                         .get_physical_device_surface_support(
                             *physical_device,
                             index as u32,
                             *surface,
                         )
                         .unwrap();
-                    if support_graphics && support_surface {
+                    if support_graphics && support_present {
+                        queue_families.present_family = Some(index as u32);
                         queue_families.graphics_family = Some(index as u32);
                         Some(())
                     } else {

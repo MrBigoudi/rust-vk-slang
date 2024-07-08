@@ -1,4 +1,6 @@
-use ash::{ext::debug_utils, khr::surface, vk, Entry, Instance};
+use std::collections::HashSet;
+
+use ash::{ext::debug_utils, khr::surface, vk, Device, Entry, Instance};
 
 use winit::{event_loop::EventLoop, window::Window};
 
@@ -34,15 +36,24 @@ pub struct VulkanApp {
     pub surface_loader: surface::Instance,
     pub physical_device: vk::PhysicalDevice,
     pub queue_families: QueueFamilyIndices,
+    pub device: Device,
 }
 
 pub struct QueueFamilyIndices {
     pub graphics_family: Option<u32>,
+    pub present_family: Option<u32>,
 }
 
 impl QueueFamilyIndices {
     pub fn is_complete(&self) -> bool {
-        self.graphics_family.is_some()
+        self.graphics_family.is_some() && self.present_family.is_some()
+    }
+
+    pub fn get_unique_queues(&self) -> HashSet<u32> {
+        let mut set: HashSet<u32> = HashSet::new();
+        set.insert(self.graphics_family.unwrap());
+        set.insert(self.present_family.unwrap());
+        set
     }
 }
 

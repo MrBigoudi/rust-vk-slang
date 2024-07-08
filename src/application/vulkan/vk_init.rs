@@ -38,6 +38,10 @@ impl VulkanApp {
             Self::init_physical_device_and_queue_families(&instance, &surface, &surface_loader);
         debug!("Ok\n");
 
+        debug!("Init Device...");
+        let device = Self::init_device(&physical_device, &instance, &queue_families);
+        debug!("Ok\n");
+
         VulkanApp {
             app_params,
             event_loop,
@@ -50,6 +54,7 @@ impl VulkanApp {
             surface_loader,
             physical_device,
             queue_families,
+            device,
         }
     }
 }
