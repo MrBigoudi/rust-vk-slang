@@ -42,6 +42,17 @@ impl VulkanApp {
         let device = Self::init_device(&physical_device, &instance, &queue_families);
         debug!("Ok\n");
 
+        debug!("Init Swapchain...");
+        let swapchain = Self::init_swapchain(
+            &app_params,
+            &instance,
+            &device,
+            &surface,
+            &surface_loader,
+            &physical_device,
+        );
+        debug!("Ok\n");
+
         VulkanApp {
             app_params,
             event_loop,
@@ -55,6 +66,7 @@ impl VulkanApp {
             physical_device,
             queue_families,
             device,
+            swapchain,
         }
     }
 }

@@ -1,12 +1,11 @@
 use std::collections::HashSet;
 
 use ash::{
-    khr::swapchain,
     vk::{self, DeviceQueueCreateInfo, PhysicalDevice},
     Device, Instance,
 };
 
-use crate::application::vk_app::{QueueFamilyIndices, VulkanApp};
+use crate::application::vk_app::{QueueFamilyIndices, VulkanApp, DEVICE_EXTENSION_NAMES_RAW};
 
 impl VulkanApp {
     pub fn init_device(
@@ -14,7 +13,6 @@ impl VulkanApp {
         instance: &Instance,
         queue_families: &QueueFamilyIndices,
     ) -> Device {
-        let device_extension_names_raw = [swapchain::NAME.as_ptr()];
         let features = vk::PhysicalDeviceFeatures {
             shader_clip_distance: 1,
             ..Default::default()
@@ -33,7 +31,7 @@ impl VulkanApp {
 
         let device_create_info = vk::DeviceCreateInfo::default()
             .queue_create_infos(&queue_create_infos)
-            .enabled_extension_names(&device_extension_names_raw)
+            .enabled_extension_names(&DEVICE_EXTENSION_NAMES_RAW)
             .enabled_features(&features);
 
         unsafe {

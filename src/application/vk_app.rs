@@ -1,6 +1,11 @@
 use std::collections::HashSet;
 
-use ash::{ext::debug_utils, khr::surface, vk, Device, Entry, Instance};
+use ash::{
+    ext::debug_utils,
+    khr::{surface, swapchain},
+    vk::{self, PresentModeKHR, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR},
+    Device, Entry, Instance,
+};
 
 use winit::{event_loop::EventLoop, window::Window};
 
@@ -37,7 +42,10 @@ pub struct VulkanApp {
     pub physical_device: vk::PhysicalDevice,
     pub queue_families: QueueFamilyIndices,
     pub device: Device,
+    pub swapchain: SwapchainKHR,
 }
+
+pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [swapchain::NAME.as_ptr()];
 
 pub struct QueueFamilyIndices {
     pub graphics_family: Option<u32>,
@@ -54,6 +62,18 @@ impl QueueFamilyIndices {
         set.insert(self.graphics_family.unwrap());
         set.insert(self.present_family.unwrap());
         set
+    }
+}
+
+pub struct SwapChainSupportDetails {
+    pub capabilities: SurfaceCapabilitiesKHR,
+    pub formats: Vec<SurfaceFormatKHR>,
+    pub present_modes: Vec<PresentModeKHR>,
+}
+
+impl SwapChainSupportDetails {
+    pub fn is_complete(&self) -> bool {
+        !self.formats.is_empty() && !self.present_modes.is_empty()
     }
 }
 
