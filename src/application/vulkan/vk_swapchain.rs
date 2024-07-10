@@ -45,7 +45,7 @@ impl VulkanApp {
             .iter()
             .cloned()
             .find(|format| {
-                format.format == vk::Format::B8G8R8A8_SRGB
+                format.format == vk::Format::B8G8R8A8_UNORM
                     && format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
             })
             .unwrap_or(available_formats[0])
@@ -55,7 +55,8 @@ impl VulkanApp {
         available_present_modes
             .iter()
             .cloned()
-            .find(|&present_mode| present_mode == vk::PresentModeKHR::MAILBOX)
+            // .find(|&present_mode| present_mode == vk::PresentModeKHR::MAILBOX)
+            .find(|&present_mode| present_mode == vk::PresentModeKHR::FIFO)
             .unwrap_or(vk::PresentModeKHR::FIFO)
     }
 
@@ -100,7 +101,14 @@ impl VulkanApp {
         surface: &SurfaceKHR,
         surface_loader: &surface::Instance,
         physical_device: &PhysicalDevice,
-    ) -> (SwapchainKHR, Vec<Image>, Format, Extent2D, Vec<ImageView>) {
+    ) -> (
+        swapchain::Device,
+        SwapchainKHR,
+        Vec<Image>,
+        Format,
+        Extent2D,
+        Vec<ImageView>,
+    ) {
         let swapchain_support =
             Self::query_swapchain_support(surface, surface_loader, physical_device);
         let mut desired_image_count = swapchain_support.capabilities.min_image_count + 1;
@@ -137,7 +145,7 @@ impl VulkanApp {
             .image_color_space(surface_format.color_space)
             .image_format(surface_format.format)
             .image_extent(surface_extent)
-            .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
+            .image_usage(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::COLOR_ATTACHMENT)
             .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
             .pre_transform(pre_transform)
             .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
@@ -161,6 +169,7 @@ impl VulkanApp {
             Self::create_swapchain_image_views(&swapchain_images, &surface_format.format, device);
 
         (
+            swapchain_loader,
             swapchain,
             swapchain_images,
             surface_format.format,

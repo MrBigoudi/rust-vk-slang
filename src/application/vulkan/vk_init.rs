@@ -1,24 +1,17 @@
 use crate::application::vk_app::{AppParameters, VulkanApp};
 
 use log::debug;
+use winit::window::Window;
 
 impl VulkanApp {
     /// Creates a new VulkanApp instance and initializes Vulkan components.
-    pub fn init(app_params: AppParameters) -> VulkanApp {
-        debug!("Init Event Loop...");
-        let event_loop = Self::init_event_loop();
-        debug!("Ok\n");
-
-        debug!("Init Window...");
-        let window = Self::init_window(&app_params, &event_loop);
-        debug!("Ok\n");
-
+    pub fn init(app_params: AppParameters, window: &Window) -> VulkanApp {
         debug!("Init Entry...");
         let entry = Self::init_entry();
         debug!("Ok\n");
 
         debug!("Init Instance...");
-        let instance = Self::init_instance(&app_params, &window, &entry);
+        let instance = Self::init_instance(&app_params, window, &entry);
         debug!("Ok\n");
 
         debug!("Init Debug Callback...");
@@ -26,7 +19,7 @@ impl VulkanApp {
         debug!("Ok\n");
 
         debug!("Init Surface...");
-        let surface = Self::init_surface(&entry, &instance, &window);
+        let surface = Self::init_surface(&entry, &instance, window);
         debug!("Ok\n");
 
         debug!("Init Surface Loader...");
@@ -34,16 +27,17 @@ impl VulkanApp {
         debug!("Ok\n");
 
         debug!("Init Physical Device and Queue Families...");
-        let (physical_device, queue_families) =
+        let (physical_device, mut queue_families) =
             Self::init_physical_device_and_queue_families(&instance, &surface, &surface_loader);
         debug!("Ok\n");
 
         debug!("Init Device...");
-        let device = Self::init_device(&physical_device, &instance, &queue_families);
+        let device = Self::init_device(&physical_device, &instance, &mut queue_families);
         debug!("Ok\n");
 
         debug!("Init Swapchain...");
         let (
+            swapchain_loader,
             swapchain,
             swapchain_images,
             swapchain_image_format,
@@ -60,13 +54,22 @@ impl VulkanApp {
         debug!("Ok\n");
 
         debug!("Init Frames...");
-        let (frames, frame_number) = Self::init_frames();
+        let (mut frames, frame_number) = Self::init_frames();
         debug!("Ok\n");
+
+        debug!("Init Commands...");
+        Self::init_commands(&device, &queue_families, &mut frames);
+        debug!("Ok\n");
+
+        debug!("Init Sync Structures...");
+        Self::init_sync_structuress(&device, &mut frames);
+        debug!("Ok\n");
+
+        // check frames
+        frames.iter().for_each(|frame| frame.check());
 
         VulkanApp {
             app_params,
-            event_loop,
-            window,
             entry,
             instance,
             debug_utils_loader,
@@ -76,6 +79,7 @@ impl VulkanApp {
             physical_device,
             queue_families,
             device,
+            swapchain_loader,
             swapchain,
             swapchain_images,
             swapchain_image_format,
@@ -83,6 +87,42 @@ impl VulkanApp {
             swapchain_image_views,
             frames,
             frame_number,
+        }
+    }
+}
+
+impl Drop for VulkanApp {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.device_wait_idle().unwrap();
+
+            for &frame in self.frames.iter() {
+                self.device
+                    .destroy_semaphore(frame.swapchain_semaphore, None);
+                self.device.destroy_semaphore(frame.render_semaphore, None);
+                self.device.destroy_fence(frame.render_fence, None);
+                self.device.destroy_command_pool(frame.command_pool, None);
+            }
+
+            for &image_view in self.swapchain_image_views.iter() {
+                self.device.destroy_image_view(image_view, None);
+            }
+
+            // for &image in self.swapchain_images.iter() {
+            //     self.device.destroy_image(image, None);
+            // }
+
+            self.swapchain_loader
+                .destroy_swapchain(self.swapchain, None);
+
+            self.device.destroy_device(None);
+
+            self.surface_loader.destroy_surface(self.surface, None);
+
+            self.debug_utils_loader
+                .destroy_debug_utils_messenger(self.debug_call_back, None);
+
+            self.instance.destroy_instance(None);
         }
     }
 }

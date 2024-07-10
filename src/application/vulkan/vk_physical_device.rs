@@ -13,7 +13,9 @@ impl VulkanApp {
     ) -> QueueFamilyIndices {
         let mut queue_families = QueueFamilyIndices {
             graphics_family: None,
+            graphics_queue: Default::default(),
             present_family: None,
+            present_queue: Default::default(),
         };
         unsafe {
             instance

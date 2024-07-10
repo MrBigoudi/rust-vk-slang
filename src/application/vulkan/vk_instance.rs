@@ -5,7 +5,11 @@ use winit::{raw_window_handle::HasDisplayHandle, window::Window};
 use std::ffi::{c_char, CStr, CString};
 
 use crate::application::vk_app::{AppParameters, VulkanApp};
-use ash::{ext::debug_utils, vk, Entry, Instance};
+use ash::{
+    ext::debug_utils,
+    vk::{self, API_VERSION_1_3},
+    Entry, Instance,
+};
 
 impl VulkanApp {
     /// Initializes the Vulkan instance with the required extensions and layers.
@@ -62,7 +66,10 @@ impl VulkanApp {
 
         // Init the Vulkan instance
         let binding = CString::new(app_params.name.clone()).unwrap();
-        let application_info = vk::ApplicationInfo::default().application_name(binding.as_c_str());
+        let application_info = vk::ApplicationInfo::default()
+            .application_name(binding.as_c_str())
+            .api_version(API_VERSION_1_3);
+
         let create_instance_info = vk::InstanceCreateInfo::default()
             .application_info(&application_info)
             .enabled_extension_names(&required_extensions)

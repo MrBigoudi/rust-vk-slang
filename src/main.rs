@@ -4,6 +4,6 @@ pub mod application;
 
 fn main() {
     env_logger::init();
-    // init the app
-    let _vk_app: VulkanApp = VulkanApp::new(Default::default());
+    // run the app
+    VulkanApp::run(Default::default());
 }
