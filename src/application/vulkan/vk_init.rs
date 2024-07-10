@@ -1,5 +1,8 @@
+use std::mem::ManuallyDrop;
+
 use crate::application::vk_app::{AppParameters, VulkanApp};
 
+use ash::vk::Extent2D;
 use log::debug;
 use winit::window::Window;
 
@@ -69,7 +72,12 @@ impl VulkanApp {
         frames.iter().for_each(|frame| frame.check());
 
         debug!("Init Memory Allocator...");
-        let allocator = Self::init_allocator(&instance, &device, &physical_device);
+        let allocator = ManuallyDrop::new(Self::init_allocator(&instance, &device, &physical_device));
+        debug!("Ok\n");
+
+        debug!("Init Images...");
+        let draw_image = Self::init_images(&app_params, &device, &allocator);
+        let draw_extent = Extent2D::default();
         debug!("Ok\n");
 
         VulkanApp {
@@ -92,6 +100,8 @@ impl VulkanApp {
             frames,
             frame_number,
             allocator,
+            draw_image,
+            draw_extent,
         }
     }
 }
@@ -102,8 +112,7 @@ impl Drop for VulkanApp {
             self.device.device_wait_idle().unwrap();
 
             for &frame in self.frames.iter() {
-                self.device
-                    .destroy_semaphore(frame.swapchain_semaphore, None);
+                self.device.destroy_semaphore(frame.swapchain_semaphore, None);
                 self.device.destroy_semaphore(frame.render_semaphore, None);
                 self.device.destroy_fence(frame.render_fence, None);
                 self.device.destroy_command_pool(frame.command_pool, None);
@@ -113,12 +122,14 @@ impl Drop for VulkanApp {
                 self.device.destroy_image_view(image_view, None);
             }
 
-            // for &image in self.swapchain_images.iter() {
-            //     self.device.destroy_image(image, None);
-            // }
+            self.device.destroy_image_view(self.draw_image.image_view, None);
+            self.allocator.destroy_image(self.draw_image.image, &mut self.draw_image.allocation);
 
             self.swapchain_loader
                 .destroy_swapchain(self.swapchain, None);
+
+            // drop allocator before device
+            ManuallyDrop::drop(&mut self.allocator);
 
             self.device.destroy_device(None);
 

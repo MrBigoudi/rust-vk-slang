@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, mem::ManuallyDrop};
 
 use log::debug;
 
@@ -6,17 +6,12 @@ use ash::{
     ext::debug_utils,
     khr::{surface, swapchain},
     vk::{
-        self, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags,
-        CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, Extent2D, Fence, Format,
-        Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView,
-        PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Semaphore, SemaphoreSubmitInfo,
-        SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR,
-        REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS,
+        self, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags, CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, Extent2D, Extent3D, Fence, Format, Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView, PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Semaphore, SemaphoreSubmitInfo, SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR, REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS
     },
     Device, Entry, Instance,
 };
 
-use vk_mem::Allocator;
+use vk_mem::{Allocation, Allocator};
 use winit::{
     event::{ElementState, Event, KeyEvent, WindowEvent},
     event_loop::EventLoopWindowTarget,
@@ -62,6 +57,14 @@ impl FrameData {
 
 pub const FRAME_OVERLAP: usize = 2;
 
+pub struct AllocatedImage {
+    pub image: Image, 
+    pub image_view: ImageView,
+    pub image_extent: Extent3D,
+    pub image_format: Format,
+    pub allocation: Allocation,
+}
+
 /// Main structure to hold Vulkan application components.
 pub struct VulkanApp {
     pub app_params: AppParameters,
@@ -86,7 +89,10 @@ pub struct VulkanApp {
     pub frames: [FrameData; FRAME_OVERLAP],
     pub frame_number: usize,
 
-    pub allocator: Allocator,
+    pub allocator: ManuallyDrop<Allocator>,
+
+    pub draw_image: AllocatedImage,
+    pub draw_extent: Extent2D,
 }
 
 pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [swapchain::NAME.as_ptr()];
@@ -124,8 +130,35 @@ impl SwapChainSupportDetails {
 }
 
 impl VulkanApp {
+    pub fn draw_background(&mut self, command_buffer: &CommandBuffer){
+        // background color
+        let flash = (self.frame_number as f32 / 120.).sin().abs();
+        let clear_color_value: ClearColorValue = ClearColorValue {
+            float32: [0., 0., flash, 1.],
+        };
+
+        let clear_ranges = [ImageSubresourceRange::default()
+            .aspect_mask(ImageAspectFlags::COLOR)
+            .base_mip_level(0)
+            .level_count(REMAINING_MIP_LEVELS)
+            .base_array_layer(0)
+            .layer_count(REMAINING_ARRAY_LAYERS)
+        ];
+
+        // clear image
+        unsafe {
+            self.device.cmd_clear_color_image(
+                *command_buffer,
+                self.draw_image.image,
+                ImageLayout::GENERAL,
+                &clear_color_value,
+                &clear_ranges,
+            );
+        }
+    }
+
     pub fn draw(&mut self) {
-        let current_frame = self.get_current_frame();
+        let current_frame = self.get_current_frame().clone();
 
         let fences = &[current_frame.render_fence];
         let timeout = 1e9 as u64; // in nanoseconds
@@ -159,6 +192,9 @@ impl VulkanApp {
         let command_buffer_begin_info =
             CommandBufferBeginInfo::default().flags(CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
+        self.draw_extent.width = self.draw_image.image_extent.width;
+        self.draw_extent.height = self.draw_image.image_extent.height;
+
         // start the command buffer recording
         unsafe {
             self.device
@@ -166,47 +202,52 @@ impl VulkanApp {
                 .unwrap()
         };
 
-        // make the swapchain image into writeable mode before rendering
-        let image = self.swapchain_images[swapchain_image_index];
+        // transition our main draw image into general layout so we can write into it
+        // we will overwrite it all so we dont care about what was the older layout
         Self::transition_image(
             &self.device,
             &command_buffer,
-            &image,
+            &self.draw_image.image,
             &ImageLayout::UNDEFINED,
             &ImageLayout::GENERAL,
         );
 
         // background color
-        let flash = (self.frame_number as f32 / 120.).sin().abs();
-        let clear_color_value: ClearColorValue = ClearColorValue {
-            float32: [0., 0., flash, 1.],
-        };
+        self.draw_background(&command_buffer);
 
-        let clear_range = ImageSubresourceRange::default()
-            .aspect_mask(ImageAspectFlags::COLOR)
-            .base_mip_level(0)
-            .level_count(REMAINING_MIP_LEVELS)
-            .base_array_layer(0)
-            .layer_count(REMAINING_ARRAY_LAYERS);
-
-        // clear image
-        let clear_ranges = [clear_range];
-        unsafe {
-            self.device.cmd_clear_color_image(
-                command_buffer,
-                image,
-                ImageLayout::GENERAL,
-                &clear_color_value,
-                &clear_ranges,
-            );
-        }
-
-        // make the swapchain image into presentable mode
+        // transition the draw image and the swapchain image into their correct transfer layouts
         Self::transition_image(
             &self.device,
             &command_buffer,
-            &image,
+            &self.draw_image.image,
             &ImageLayout::GENERAL,
+            &ImageLayout::TRANSFER_SRC_OPTIMAL,
+        );
+
+        Self::transition_image(
+            &self.device,
+            &command_buffer,
+            &self.swapchain_images[swapchain_image_index],
+            &ImageLayout::UNDEFINED,
+            &ImageLayout::TRANSFER_DST_OPTIMAL,
+        );
+
+        // execute a copy from the draw image into the swapchain
+        Self::copy_image_to_image(
+            &command_buffer, 
+            &self.device, 
+            &self.draw_image.image,
+            &self.swapchain_images[swapchain_image_index], 
+            &self.draw_extent, 
+            &self.swapchain_extent
+        );
+
+        // set swapchain image layout to Present so we can show it on the screen
+        Self::transition_image(
+            &self.device,
+            &command_buffer,
+            &self.swapchain_images[swapchain_image_index],
+            &ImageLayout::TRANSFER_DST_OPTIMAL,
             &ImageLayout::PRESENT_SRC_KHR,
         );
 
