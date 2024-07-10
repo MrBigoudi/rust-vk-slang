@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use ash::{
-    vk::{self, DeviceQueueCreateInfo, PhysicalDevice}, Device, Instance
+    vk::{self, DeviceQueueCreateInfo, PhysicalDevice},
+    Device, Instance,
 };
 
 use crate::application::vk_app::{QueueFamilyIndices, VulkanApp, DEVICE_EXTENSION_NAMES_RAW};
@@ -12,15 +13,13 @@ impl VulkanApp {
         instance: &Instance,
         queue_families: &mut QueueFamilyIndices,
     ) -> Device {
-        let features = vk::PhysicalDeviceFeatures::default()
-            .shader_clip_distance(true);
+        let features = vk::PhysicalDeviceFeatures::default().shader_clip_distance(true);
         let mut features_12 = vk::PhysicalDeviceVulkan12Features::default()
             .buffer_device_address(true)
             .descriptor_indexing(true);
         let mut features_13 = vk::PhysicalDeviceVulkan13Features::default()
             .synchronization2(true)
             .dynamic_rendering(true);
-
 
         let priority = [1.0];
         let mut queue_create_infos: Vec<DeviceQueueCreateInfo> = Vec::new();

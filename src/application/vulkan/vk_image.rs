@@ -1,6 +1,7 @@
 use ash::{
     vk::{
-        self, AccessFlags2, CommandBuffer, DependencyInfo, Image, ImageAspectFlags, ImageLayout, ImageMemoryBarrier2, ImageSubresourceRange, PipelineStageFlags2
+        self, AccessFlags2, CommandBuffer, DependencyInfo, Image, ImageAspectFlags, ImageLayout,
+        ImageMemoryBarrier2, ImageSubresourceRange, PipelineStageFlags2,
     },
     Device,
 };

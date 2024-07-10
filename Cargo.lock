@@ -887,6 +887,7 @@ dependencies = [
  "ash-window",
  "env_logger",
  "log",
+ "vk-mem",
  "winit",
 ]
 
@@ -1124,6 +1125,17 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "vk-mem"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cb12b79bcec57a3334d0284f1364c1846f378bb47df9779c6dbfcfc245c9404"
+dependencies = [
+ "ash",
+ "bitflags 2.6.0",
+ "cc",
+]
 
 [[package]]
 name = "walkdir"

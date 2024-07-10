@@ -16,7 +16,12 @@ use ash::{
     Device, Entry, Instance,
 };
 
-use winit::{event::{ElementState, Event, KeyEvent, WindowEvent}, event_loop::EventLoopWindowTarget, keyboard::{Key, NamedKey}};
+use vk_mem::Allocator;
+use winit::{
+    event::{ElementState, Event, KeyEvent, WindowEvent},
+    event_loop::EventLoopWindowTarget,
+    keyboard::{Key, NamedKey},
+};
 
 /// Structure to hold application parameters such as name, window width, and window height.
 pub struct AppParameters {
@@ -80,11 +85,11 @@ pub struct VulkanApp {
 
     pub frames: [FrameData; FRAME_OVERLAP],
     pub frame_number: usize,
+
+    pub allocator: Allocator,
 }
 
-pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [
-    swapchain::NAME.as_ptr(),
-];
+pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [swapchain::NAME.as_ptr()];
 
 pub struct QueueFamilyIndices {
     pub graphics_family: Option<u32>,
@@ -213,21 +218,17 @@ impl VulkanApp {
         // signal the render semaphore (to signal that rendering has finished)
         let command_buffer_submit_infos = [CommandBufferSubmitInfo::default()
             .command_buffer(command_buffer)
-            .device_mask(0)
-        ];
+            .device_mask(0)];
         let wait_swapchain_semaphore_infos = [SemaphoreSubmitInfo::default()
             .semaphore(current_frame.swapchain_semaphore)
-            .stage_mask(PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT_KHR)
-        ];
+            .stage_mask(PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT_KHR)];
         let signal_rendering_done_infos = [SemaphoreSubmitInfo::default()
             .semaphore(current_frame.render_semaphore)
-            .stage_mask(PipelineStageFlags2::ALL_GRAPHICS)
-        ];
+            .stage_mask(PipelineStageFlags2::ALL_GRAPHICS)];
         let submit_infos = [SubmitInfo2::default()
             .wait_semaphore_infos(&wait_swapchain_semaphore_infos)
             .signal_semaphore_infos(&signal_rendering_done_infos)
-            .command_buffer_infos(&command_buffer_submit_infos)
-        ];
+            .command_buffer_infos(&command_buffer_submit_infos)];
 
         // submit command buffer to the queue and execute it
         // render fence will now block until the graphic commands finish execution
@@ -262,24 +263,22 @@ impl VulkanApp {
         self.frame_number += 1;
     }
 
-    pub fn input_handler(&mut self, event: &Event<()>, elwt: &EventLoopWindowTarget<()>){
-        match event {
-            Event::WindowEvent {
-                event:
-                    WindowEvent::KeyboardInput {
-                        event:
-                            KeyEvent {
-                                state: ElementState::Pressed,
-                                logical_key: Key::Named(NamedKey::Escape),
-                                ..
-                            },
-                        ..
-                    },
+    pub fn input_handler(&mut self, event: &Event<()>, elwt: &EventLoopWindowTarget<()>) {
+        if let Event::WindowEvent {
+            event:
+                WindowEvent::KeyboardInput {
+                    event:
+                        KeyEvent {
+                            state: ElementState::Pressed,
+                            logical_key: Key::Named(NamedKey::Escape),
+                            ..
+                        },
                     ..
-                } => {
-                    elwt.exit();
-                }
-            _ => ()
+                },
+            ..
+        } = event
+        {
+            elwt.exit();
         }
     }
 

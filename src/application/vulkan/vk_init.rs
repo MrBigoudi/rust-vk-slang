@@ -68,6 +68,10 @@ impl VulkanApp {
         // check frames
         frames.iter().for_each(|frame| frame.check());
 
+        debug!("Init Memory Allocator...");
+        let allocator = Self::init_allocator(&instance, &device, &physical_device);
+        debug!("Ok\n");
+
         VulkanApp {
             app_params,
             entry,
@@ -87,6 +91,7 @@ impl VulkanApp {
             swapchain_image_views,
             frames,
             frame_number,
+            allocator,
         }
     }
 }

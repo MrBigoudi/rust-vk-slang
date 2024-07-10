@@ -1,3 +1,4 @@
+pub mod vk_allocator;
 pub mod vk_commands;
 pub mod vk_debug;
 pub mod vk_device;
