@@ -169,4 +169,15 @@ impl VulkanApp {
         }
 
     }
+
+    pub fn clear_images(&mut self){
+        unsafe {
+            for &image_view in self.swapchain_image_views.iter() {
+                self.device.destroy_image_view(image_view, None);
+            }
+
+            self.device.destroy_image_view(self.draw_image.image_view, None);
+            self.allocator.destroy_image(self.draw_image.image, &mut self.draw_image.allocation);
+        }
+    }
 }

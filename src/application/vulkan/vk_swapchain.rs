@@ -177,4 +177,11 @@ impl VulkanApp {
             swapchain_image_views,
         )
     }
+
+    pub fn clear_swapchain(&self){
+        unsafe {
+            self.swapchain_loader
+                .destroy_swapchain(self.swapchain, None);
+        }
+    }
 }

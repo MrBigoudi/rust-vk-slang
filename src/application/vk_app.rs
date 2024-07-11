@@ -6,7 +6,7 @@ use ash::{
     ext::debug_utils,
     khr::{surface, swapchain},
     vk::{
-        self, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags, CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, Extent2D, Extent3D, Fence, Format, Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView, PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Semaphore, SemaphoreSubmitInfo, SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR, REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS
+        self, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags, CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, DescriptorSet, DescriptorSetLayout, Extent2D, Extent3D, Fence, Format, Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView, PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Semaphore, SemaphoreSubmitInfo, SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR, REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS
     },
     Device, Entry, Instance,
 };
@@ -17,6 +17,8 @@ use winit::{
     event_loop::EventLoopWindowTarget,
     keyboard::{Key, NamedKey},
 };
+
+use super::pipelines::vk_descriptors::DescriptorAllocator;
 
 /// Structure to hold application parameters such as name, window width, and window height.
 pub struct AppParameters {
@@ -65,6 +67,12 @@ pub struct AllocatedImage {
     pub allocation: Allocation,
 }
 
+pub struct Descriptors {
+    pub global_allocator_descriptor: DescriptorAllocator,
+    pub draw_image_descriptors: DescriptorSet,
+    pub draw_image_descriptor_layout: DescriptorSetLayout,
+}
+
 /// Main structure to hold Vulkan application components.
 pub struct VulkanApp {
     pub app_params: AppParameters,
@@ -93,6 +101,7 @@ pub struct VulkanApp {
 
     pub draw_image: AllocatedImage,
     pub draw_extent: Extent2D,
+    pub descriptors: Descriptors,
 }
 
 pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [swapchain::NAME.as_ptr()];

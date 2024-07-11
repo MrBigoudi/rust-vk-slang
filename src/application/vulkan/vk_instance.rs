@@ -80,4 +80,10 @@ impl VulkanApp {
                 .unwrap_or_else(|err| panic!("Failed to create the instance: {:?}\n", err))
         }
     }
+
+    pub fn clear_instance(&self){
+        unsafe {
+            self.instance.destroy_instance(None);
+        }
+    }
 }

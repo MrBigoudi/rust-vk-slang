@@ -80,6 +80,10 @@ impl VulkanApp {
         let draw_extent = Extent2D::default();
         debug!("Ok\n");
 
+        debug!("Init Descriptor...");
+        let descriptors = Self::init_descriptors(&device, &draw_image);
+        debug!("Ok\n");
+
         VulkanApp {
             app_params,
             entry,
@@ -102,43 +106,23 @@ impl VulkanApp {
             allocator,
             draw_image,
             draw_extent,
+            descriptors,
         }
     }
 }
 
 impl Drop for VulkanApp {
     fn drop(&mut self) {
-        unsafe {
-            self.device.device_wait_idle().unwrap();
-
-            for &frame in self.frames.iter() {
-                self.device.destroy_semaphore(frame.swapchain_semaphore, None);
-                self.device.destroy_semaphore(frame.render_semaphore, None);
-                self.device.destroy_fence(frame.render_fence, None);
-                self.device.destroy_command_pool(frame.command_pool, None);
-            }
-
-            for &image_view in self.swapchain_image_views.iter() {
-                self.device.destroy_image_view(image_view, None);
-            }
-
-            self.device.destroy_image_view(self.draw_image.image_view, None);
-            self.allocator.destroy_image(self.draw_image.image, &mut self.draw_image.allocation);
-
-            self.swapchain_loader
-                .destroy_swapchain(self.swapchain, None);
-
-            // drop allocator before device
-            ManuallyDrop::drop(&mut self.allocator);
-
-            self.device.destroy_device(None);
-
-            self.surface_loader.destroy_surface(self.surface, None);
-
-            self.debug_utils_loader
-                .destroy_debug_utils_messenger(self.debug_call_back, None);
-
-            self.instance.destroy_instance(None);
-        }
+        unsafe { self.device.device_wait_idle().unwrap(); }
+        self.clear_descriptors();
+        self.clear_images();
+        self.clear_frames();
+        // drop allocator before device
+        unsafe { ManuallyDrop::drop(&mut self.allocator); }
+        self.clear_swapchain();
+        self.clear_device();
+        self.clear_surface();
+        self.clear_debug_callback();            
+        self.clear_instance();
     }
 }
