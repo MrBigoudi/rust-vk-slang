@@ -81,7 +81,7 @@ impl VulkanApp {
         }
     }
 
-    pub fn clear_instance(&self){
+    pub fn clear_instance(&self) {
         unsafe {
             self.instance.destroy_instance(None);
         }

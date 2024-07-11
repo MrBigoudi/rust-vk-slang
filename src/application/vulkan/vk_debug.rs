@@ -62,7 +62,7 @@ impl VulkanApp {
         (debug_utils_loader, debug_call_back)
     }
 
-    pub fn clear_debug_callback(&self){
+    pub fn clear_debug_callback(&self) {
         unsafe {
             self.debug_utils_loader
                 .destroy_debug_utils_messenger(self.debug_call_back, None);

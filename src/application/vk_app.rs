@@ -6,7 +6,12 @@ use ash::{
     ext::debug_utils,
     khr::{surface, swapchain},
     vk::{
-        self, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags, CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, DescriptorSet, DescriptorSetLayout, Extent2D, Extent3D, Fence, Format, Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView, PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Semaphore, SemaphoreSubmitInfo, SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR, REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS
+        self, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags,
+        CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, Extent2D, Extent3D, Fence,
+        Format, Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView,
+        PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Semaphore, SemaphoreSubmitInfo,
+        SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR,
+        REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS,
     },
     Device, Entry, Instance,
 };
@@ -18,7 +23,7 @@ use winit::{
     keyboard::{Key, NamedKey},
 };
 
-use super::pipelines::vk_descriptors::DescriptorAllocator;
+use super::pipelines::pipeline::ComputePipeline;
 
 /// Structure to hold application parameters such as name, window width, and window height.
 pub struct AppParameters {
@@ -60,17 +65,11 @@ impl FrameData {
 pub const FRAME_OVERLAP: usize = 2;
 
 pub struct AllocatedImage {
-    pub image: Image, 
+    pub image: Image,
     pub image_view: ImageView,
     pub image_extent: Extent3D,
     pub image_format: Format,
     pub allocation: Allocation,
-}
-
-pub struct Descriptors {
-    pub global_allocator_descriptor: DescriptorAllocator,
-    pub draw_image_descriptors: DescriptorSet,
-    pub draw_image_descriptor_layout: DescriptorSetLayout,
 }
 
 /// Main structure to hold Vulkan application components.
@@ -101,7 +100,8 @@ pub struct VulkanApp {
 
     pub draw_image: AllocatedImage,
     pub draw_extent: Extent2D,
-    pub descriptors: Descriptors,
+
+    pub pipelines: Vec<Box<dyn ComputePipeline>>,
 }
 
 pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [swapchain::NAME.as_ptr()];
@@ -139,7 +139,7 @@ impl SwapChainSupportDetails {
 }
 
 impl VulkanApp {
-    pub fn draw_background(&mut self, command_buffer: &CommandBuffer){
+    pub fn draw_background(&mut self, command_buffer: &CommandBuffer) {
         // background color
         let flash = (self.frame_number as f32 / 120.).sin().abs();
         let clear_color_value: ClearColorValue = ClearColorValue {
@@ -151,8 +151,7 @@ impl VulkanApp {
             .base_mip_level(0)
             .level_count(REMAINING_MIP_LEVELS)
             .base_array_layer(0)
-            .layer_count(REMAINING_ARRAY_LAYERS)
-        ];
+            .layer_count(REMAINING_ARRAY_LAYERS)];
 
         // clear image
         unsafe {
@@ -164,10 +163,19 @@ impl VulkanApp {
                 &clear_ranges,
             );
         }
+
+        // Take the pipelines out of self temporarily
+        let mut pipelines = std::mem::take(&mut self.pipelines);
+        // Extract the specific pipeline you want to mutate
+        if let Some(gradient_pipeline) = pipelines.get_mut(0) {
+            gradient_pipeline.run(self, command_buffer);
+        }
+        // Put the pipelines back into self
+        self.pipelines = pipelines;
     }
 
     pub fn draw(&mut self) {
-        let current_frame = self.get_current_frame().clone();
+        let current_frame = *self.get_current_frame();
 
         let fences = &[current_frame.render_fence];
         let timeout = 1e9 as u64; // in nanoseconds
@@ -243,12 +251,12 @@ impl VulkanApp {
 
         // execute a copy from the draw image into the swapchain
         Self::copy_image_to_image(
-            &command_buffer, 
-            &self.device, 
+            &command_buffer,
+            &self.device,
             &self.draw_image.image,
-            &self.swapchain_images[swapchain_image_index], 
-            &self.draw_extent, 
-            &self.swapchain_extent
+            &self.swapchain_images[swapchain_image_index],
+            &self.draw_extent,
+            &self.swapchain_extent,
         );
 
         // set swapchain image layout to Present so we can show it on the screen
@@ -341,6 +349,9 @@ impl VulkanApp {
         debug!("Ok\n");
 
         let mut application = Self::init(app_params, &window);
+
+        // init the compute pipelines in the correct order
+        application.init_pipelines();
 
         let _ = event_loop.run(move |event, elwt| {
             match event {

@@ -1,4 +1,8 @@
-RWTexture2D gs_image : register(u0);
+static const int DESCRIPTOR_SET = 0;
+static const int DESCRIPTOR_BINDING = 0;
+
+[[vk::binding(DESCRIPTOR_SET, DESCRIPTOR_BINDING)]]
+RWTexture2D<float4> gs_image;
 
 static const int THREAD_GROUP_SIZE_X = 16;
 static const int THREAD_GROUP_SIZE_Y = 16;
@@ -6,7 +10,7 @@ static const int THREAD_GROUP_SIZE_Z = 1;
 
 [shader("compute")]
 [numthreads(THREAD_GROUP_SIZE_X, THREAD_GROUP_SIZE_Y, THREAD_GROUP_SIZE_Z)]
-void computeMain(uint3 threadId : SV_DispatchThreadID)
+void main(uint3 threadId : SV_DispatchThreadID)
 {
     uint2 texelCoord = threadId.xy;
 	uint2 size = uint2(0, 0); // initialize to arbitrary value
@@ -21,6 +25,6 @@ void computeMain(uint3 threadId : SV_DispatchThreadID)
             color.y = float(texelCoord.y) / float(size.y);
         }
     
-        gs_image[texelCoord.xy] = color;
+        gs_image[texelCoord] = color;
     }
 }

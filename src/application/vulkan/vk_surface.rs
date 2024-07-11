@@ -26,8 +26,8 @@ impl VulkanApp {
         surface::Instance::new(entry, instance)
     }
 
-    pub fn clear_surface(&self){
-        unsafe{
+    pub fn clear_surface(&self) {
+        unsafe {
             self.surface_loader.destroy_surface(self.surface, None);
         }
     }

@@ -1,7 +1,9 @@
 use crate::application::vk_app::{AppParameters, VulkanApp};
 
 use winit::{
-    dpi::{LogicalSize, PhysicalSize, Position}, event_loop::EventLoop, window::{Window, WindowBuilder}
+    dpi::{LogicalSize, PhysicalSize, Position},
+    event_loop::EventLoop,
+    window::{Window, WindowBuilder},
 };
 
 impl VulkanApp {
@@ -31,14 +33,12 @@ impl VulkanApp {
         let pos_y = (monitor_height - logical_height * scale_factor) / 2.0;
         let position = Position::new(Position::Physical((pos_x, pos_y).into()));
 
-        let window = WindowBuilder::new()
+        WindowBuilder::new()
             .with_title(&app_params.name)
             .with_resizable(false)
             .with_inner_size(window_size)
             .with_position(position)
             .build(event_loop)
-            .unwrap_or_else(|err| panic!("Failed to initialize the window: {:?}\n", err));
-
-        window
+            .unwrap_or_else(|err| panic!("Failed to initialize the window: {:?}\n", err))
     }
 }

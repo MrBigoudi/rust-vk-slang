@@ -1,7 +1,12 @@
 use ash::{
     vk::{
-        self, AccessFlags2, BlitImageInfo2, CommandBuffer, DependencyInfo, Extent2D, Extent3D, Filter, Format, Image, ImageAspectFlags, ImageBlit2, ImageCreateInfo, ImageLayout, ImageMemoryBarrier2, ImageSubresourceLayers, ImageSubresourceRange, ImageTiling, ImageType, ImageUsageFlags, ImageViewCreateInfo, ImageViewType, MemoryPropertyFlags, Offset3D, PipelineStageFlags2, SampleCountFlags
-    }, Device,
+        self, AccessFlags2, BlitImageInfo2, CommandBuffer, DependencyInfo, Extent2D, Extent3D,
+        Filter, Format, Image, ImageAspectFlags, ImageBlit2, ImageCreateInfo, ImageLayout,
+        ImageMemoryBarrier2, ImageSubresourceLayers, ImageSubresourceRange, ImageTiling, ImageType,
+        ImageUsageFlags, ImageViewCreateInfo, ImageViewType, MemoryPropertyFlags, Offset3D,
+        PipelineStageFlags2, SampleCountFlags,
+    },
+    Device,
 };
 use vk_mem::{Alloc, AllocationCreateInfo, Allocator};
 
@@ -54,33 +59,36 @@ impl VulkanApp {
     ) {
         let src_offsets: [Offset3D; 2] = [
             Offset3D::default(),
-            Offset3D::default().x(size_src.width as i32).y(size_src.height as i32).z(1),
+            Offset3D::default()
+                .x(size_src.width as i32)
+                .y(size_src.height as i32)
+                .z(1),
         ];
         let dst_offsets: [Offset3D; 2] = [
             Offset3D::default(),
-            Offset3D::default().x(size_dst.width as i32).y(size_dst.height as i32).z(1),
+            Offset3D::default()
+                .x(size_dst.width as i32)
+                .y(size_dst.height as i32)
+                .z(1),
         ];
 
         let src_subresource = ImageSubresourceLayers::default()
             .aspect_mask(ImageAspectFlags::COLOR)
             .base_array_layer(0)
             .layer_count(1)
-            .mip_level(0)
-        ;
+            .mip_level(0);
 
         let dst_subresource = ImageSubresourceLayers::default()
             .aspect_mask(ImageAspectFlags::COLOR)
             .base_array_layer(0)
             .layer_count(1)
-            .mip_level(0)
-        ;
+            .mip_level(0);
 
         let blit_regions = [ImageBlit2::default()
             .src_offsets(src_offsets)
             .dst_offsets(dst_offsets)
             .src_subresource(src_subresource)
-            .dst_subresource(dst_subresource)
-        ];
+            .dst_subresource(dst_subresource)];
 
         let blit_image_info = BlitImageInfo2::default()
             .dst_image(*image_dst)
@@ -88,13 +96,11 @@ impl VulkanApp {
             .src_image(*image_src)
             .src_image_layout(ImageLayout::TRANSFER_SRC_OPTIMAL)
             .filter(Filter::LINEAR)
-            .regions(&blit_regions)
-        ;
+            .regions(&blit_regions);
 
         unsafe {
             device.cmd_blit_image2(*command_buffer, &blit_image_info);
         }
-
     }
 
     pub fn init_images(
@@ -107,16 +113,14 @@ impl VulkanApp {
             .width(app_params.window_width as u32)
             .height(app_params.window_height as u32)
             .depth(1);
-        
+
         // hardcoding the draw format to 32 bit float
         let draw_image_format = Format::R16G16B16A16_SFLOAT;
-        let draw_image_extent = draw_image_extent;
         let draw_image_usages = ImageUsageFlags::default()
             | ImageUsageFlags::TRANSFER_SRC
             | ImageUsageFlags::TRANSFER_DST
             | ImageUsageFlags::STORAGE
-            | ImageUsageFlags::COLOR_ATTACHMENT
-        ;
+            | ImageUsageFlags::COLOR_ATTACHMENT;
 
         let image_info = ImageCreateInfo::default()
             .image_type(ImageType::TYPE_2D)
@@ -126,16 +130,18 @@ impl VulkanApp {
             .mip_levels(1)
             .array_layers(1)
             .samples(SampleCountFlags::TYPE_1)
-            .tiling(ImageTiling::OPTIMAL)
-        ;
+            .tiling(ImageTiling::OPTIMAL);
 
         // for the draw image, we want to allocate it from gpu local memory
-        let mut image_allocation_info = AllocationCreateInfo::default();
-        image_allocation_info.required_flags = MemoryPropertyFlags::DEVICE_LOCAL;
+        let image_allocation_info = AllocationCreateInfo {
+            required_flags: MemoryPropertyFlags::DEVICE_LOCAL,
+            ..Default::default()
+        };
 
         //allocate and create the image
         let (image, allocation) = unsafe {
-            allocator.create_image(&image_info, &image_allocation_info)
+            allocator
+                .create_image(&image_info, &image_allocation_info)
                 .unwrap()
         };
 
@@ -145,39 +151,35 @@ impl VulkanApp {
             .level_count(1)
             .base_array_layer(0)
             .layer_count(1)
-            .aspect_mask(ImageAspectFlags::COLOR)
-        ;
+            .aspect_mask(ImageAspectFlags::COLOR);
 
         let image_view_info = ImageViewCreateInfo::default()
             .view_type(ImageViewType::TYPE_2D)
             .image(image)
             .format(draw_image_format)
-            .subresource_range(image_subresource_range)
-        ;
+            .subresource_range(image_subresource_range);
 
-        let image_view = unsafe {
-            device.create_image_view(&image_view_info, None)
-                .unwrap()
-        };
+        let image_view = unsafe { device.create_image_view(&image_view_info, None).unwrap() };
 
-        AllocatedImage{
+        AllocatedImage {
             image,
             image_view,
             image_extent: draw_image_extent,
             image_format: draw_image_format,
             allocation,
         }
-
     }
 
-    pub fn clear_images(&mut self){
+    pub fn clear_images(&mut self) {
         unsafe {
             for &image_view in self.swapchain_image_views.iter() {
                 self.device.destroy_image_view(image_view, None);
             }
 
-            self.device.destroy_image_view(self.draw_image.image_view, None);
-            self.allocator.destroy_image(self.draw_image.image, &mut self.draw_image.allocation);
+            self.device
+                .destroy_image_view(self.draw_image.image_view, None);
+            self.allocator
+                .destroy_image(self.draw_image.image, &mut self.draw_image.allocation);
         }
     }
 }

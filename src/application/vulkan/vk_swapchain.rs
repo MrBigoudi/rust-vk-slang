@@ -178,7 +178,7 @@ impl VulkanApp {
         )
     }
 
-    pub fn clear_swapchain(&self){
+    pub fn clear_swapchain(&self) {
         unsafe {
             self.swapchain_loader
                 .destroy_swapchain(self.swapchain, None);

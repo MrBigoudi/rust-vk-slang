@@ -54,7 +54,7 @@ impl VulkanApp {
         device
     }
 
-    pub fn clear_device(&self){
+    pub fn clear_device(&self) {
         unsafe {
             self.device.destroy_device(None);
         }

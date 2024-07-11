@@ -72,16 +72,13 @@ impl VulkanApp {
         frames.iter().for_each(|frame| frame.check());
 
         debug!("Init Memory Allocator...");
-        let allocator = ManuallyDrop::new(Self::init_allocator(&instance, &device, &physical_device));
+        let allocator =
+            ManuallyDrop::new(Self::init_allocator(&instance, &device, &physical_device));
         debug!("Ok\n");
 
         debug!("Init Images...");
         let draw_image = Self::init_images(&app_params, &device, &allocator);
         let draw_extent = Extent2D::default();
-        debug!("Ok\n");
-
-        debug!("Init Descriptor...");
-        let descriptors = Self::init_descriptors(&device, &draw_image);
         debug!("Ok\n");
 
         VulkanApp {
@@ -106,23 +103,27 @@ impl VulkanApp {
             allocator,
             draw_image,
             draw_extent,
-            descriptors,
+            pipelines: Vec::new(),
         }
     }
 }
 
 impl Drop for VulkanApp {
     fn drop(&mut self) {
-        unsafe { self.device.device_wait_idle().unwrap(); }
-        self.clear_descriptors();
+        unsafe {
+            self.device.device_wait_idle().unwrap();
+        }
+        self.clear_pipelines();
         self.clear_images();
         self.clear_frames();
         // drop allocator before device
-        unsafe { ManuallyDrop::drop(&mut self.allocator); }
+        unsafe {
+            ManuallyDrop::drop(&mut self.allocator);
+        }
         self.clear_swapchain();
         self.clear_device();
         self.clear_surface();
-        self.clear_debug_callback();            
+        self.clear_debug_callback();
         self.clear_instance();
     }
 }
