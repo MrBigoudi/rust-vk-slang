@@ -6,12 +6,7 @@ use ash::{
     ext::debug_utils,
     khr::{surface, swapchain},
     vk::{
-        self, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags,
-        CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, Extent2D, Extent3D, Fence,
-        Format, Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView,
-        PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Semaphore, SemaphoreSubmitInfo,
-        SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR,
-        REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS,
+        self, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags, CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, DescriptorPool, Extent2D, Extent3D, Fence, Format, Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView, PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Semaphore, SemaphoreSubmitInfo, SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR, REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS
     },
     Device, Entry, Instance,
 };
@@ -72,6 +67,27 @@ pub struct AllocatedImage {
     pub allocation: Allocation,
 }
 
+#[derive(Default)]
+pub struct ImmediateSubmitStructures{
+    pub fence: Fence,
+    pub command_buffer: CommandBuffer,
+    pub command_pool: CommandPool,
+}
+
+#[derive(Default)]
+pub struct GuiParameters{
+    pub immediate_submit_struct: ImmediateSubmitStructures,
+    pub descriptor_pool: DescriptorPool,
+
+    pub context: Option<imgui::Context>,
+    pub plateform: Option<imgui_winit_support::WinitPlatform>,
+    pub renderer: Option<imgui_rs_vulkan_renderer::Renderer>,
+}
+
+pub struct AllocatorWrapper{
+    pub allocator: std::sync::Arc<std::sync::Mutex<Allocator>>,
+}
+
 /// Main structure to hold Vulkan application components.
 pub struct VulkanApp {
     pub app_params: AppParameters,
@@ -84,6 +100,7 @@ pub struct VulkanApp {
     pub surface_loader: surface::Instance,
     pub physical_device: vk::PhysicalDevice,
     pub queue_families: QueueFamilyIndices,
+
     pub device: Device,
 
     pub swapchain_loader: swapchain::Device,
@@ -95,13 +112,14 @@ pub struct VulkanApp {
 
     pub frames: [FrameData; FRAME_OVERLAP],
     pub frame_number: usize,
-
-    pub allocator: ManuallyDrop<Allocator>,
+    pub allocator: ManuallyDrop<AllocatorWrapper>,
 
     pub draw_image: AllocatedImage,
     pub draw_extent: Extent2D,
 
     pub pipelines: Vec<Box<dyn ComputePipeline>>,
+
+    pub gui_parameters: GuiParameters,
 }
 
 pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [swapchain::NAME.as_ptr()];
@@ -351,7 +369,14 @@ impl VulkanApp {
         let mut application = Self::init(app_params, &window);
 
         // init the compute pipelines in the correct order
+        debug!("Init Pipelines...");
         application.init_pipelines();
+        debug!("Ok\n");
+
+        // init gui
+        debug!("Init GUI...");
+        application.init_gui(&window);
+        debug!("Ok\n");
 
         let _ = event_loop.run(move |event, elwt| {
             match event {

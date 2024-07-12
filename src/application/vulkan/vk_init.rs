@@ -1,6 +1,6 @@
-use std::mem::ManuallyDrop;
+use std::{mem::ManuallyDrop, sync::{Arc, Mutex}};
 
-use crate::application::vk_app::{AppParameters, VulkanApp};
+use crate::application::vk_app::{AllocatorWrapper, AppParameters, VulkanApp};
 
 use ash::vk::Extent2D;
 use log::debug;
@@ -72,8 +72,7 @@ impl VulkanApp {
         frames.iter().for_each(|frame| frame.check());
 
         debug!("Init Memory Allocator...");
-        let allocator =
-            ManuallyDrop::new(Self::init_allocator(&instance, &device, &physical_device));
+        let allocator = Self::init_allocator(&instance, &device, &physical_device);
         debug!("Ok\n");
 
         debug!("Init Images...");
@@ -100,30 +99,33 @@ impl VulkanApp {
             swapchain_image_views,
             frames,
             frame_number,
-            allocator,
+            allocator: ManuallyDrop::new(AllocatorWrapper{ allocator: Arc::new(Mutex::new(allocator))}),
             draw_image,
             draw_extent,
             pipelines: Vec::new(),
+            gui_parameters: Default::default(),
         }
     }
 }
 
 impl Drop for VulkanApp {
     fn drop(&mut self) {
+        debug!("Cleaning Everything...\n");
         unsafe {
             self.device.device_wait_idle().unwrap();
         }
+        self.clear_gui();
         self.clear_pipelines();
         self.clear_images();
         self.clear_frames();
         // drop allocator before device
-        unsafe {
-            ManuallyDrop::drop(&mut self.allocator);
-        }
+        unsafe { ManuallyDrop::drop(&mut self.allocator) };
+        
         self.clear_swapchain();
         self.clear_device();
         self.clear_surface();
         self.clear_debug_callback();
         self.clear_instance();
+        debug!("Ok\n");
     }
 }

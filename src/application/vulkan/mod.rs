@@ -12,3 +12,4 @@ pub mod vk_surface;
 pub mod vk_swapchain;
 pub mod vk_sync_structures;
 pub mod vk_window;
+pub mod vk_gui;

@@ -178,8 +178,9 @@ impl VulkanApp {
 
             self.device
                 .destroy_image_view(self.draw_image.image_view, None);
-            self.allocator
-                .destroy_image(self.draw_image.image, &mut self.draw_image.allocation);
+
+            let allocator = self.allocator.allocator.lock().unwrap();
+            allocator.destroy_image(self.draw_image.image, &mut self.draw_image.allocation);
         }
     }
 }
