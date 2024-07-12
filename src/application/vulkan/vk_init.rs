@@ -1,4 +1,7 @@
-use std::{mem::ManuallyDrop, sync::{Arc, Mutex}};
+use std::{
+    mem::ManuallyDrop,
+    sync::{Arc, Mutex},
+};
 
 use crate::application::vk_app::{AllocatorWrapper, AppParameters, VulkanApp};
 
@@ -99,14 +102,13 @@ impl VulkanApp {
             swapchain_image_views,
             frames,
             frame_number,
-            allocator: ManuallyDrop::new(AllocatorWrapper{ allocator: Arc::new(Mutex::new(allocator))}),
+            allocator: ManuallyDrop::new(AllocatorWrapper {
+                allocator: Arc::new(Mutex::new(allocator)),
+            }),
             draw_image,
             draw_extent,
             pipelines: Vec::new(),
             gui_parameters: Default::default(),
-
-            test_value: 0,
-            test_choices: vec![String::from("test test this is 1"), String::from("test test this is 2")],
         }
     }
 }
@@ -123,7 +125,7 @@ impl Drop for VulkanApp {
         self.clear_frames();
         // drop allocator before device
         unsafe { ManuallyDrop::drop(&mut self.allocator) };
-        
+
         self.clear_swapchain();
         self.clear_device();
         self.clear_surface();

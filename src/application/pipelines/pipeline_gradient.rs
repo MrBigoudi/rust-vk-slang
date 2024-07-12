@@ -2,7 +2,9 @@ use std::ffi::CStr;
 
 use ash::{
     vk::{
-        ComputePipelineCreateInfo, DescriptorImageInfo, DescriptorSetLayoutCreateFlags, DescriptorType, ImageLayout, PipelineBindPoint, PipelineCache, PipelineLayoutCreateInfo, PipelineShaderStageCreateInfo, ShaderStageFlags, WriteDescriptorSet
+        ComputePipelineCreateInfo, DescriptorImageInfo, DescriptorSetLayoutCreateFlags,
+        DescriptorType, ImageLayout, PipelineBindPoint, PipelineCache, PipelineLayoutCreateInfo,
+        PipelineShaderStageCreateInfo, ShaderStageFlags, WriteDescriptorSet,
     },
     Device,
 };
@@ -127,32 +129,32 @@ impl ComputePipeline for PipelineGradient {
     fn get_attributes(&self) -> &PipelineAttributes {
         &self.base_attributes
     }
-    
+
     fn run(&mut self, vulkan_app: &mut VulkanApp, command_buffer: &ash::vk::CommandBuffer) {
         unsafe {
             // bind the gradient drawing compute pipeline
             vulkan_app.device.cmd_bind_pipeline(
-                *command_buffer, 
-                PipelineBindPoint::COMPUTE, 
-                self.base_attributes.pipeline
+                *command_buffer,
+                PipelineBindPoint::COMPUTE,
+                self.base_attributes.pipeline,
             );
 
             // bind the descriptor set containing the draw image for the compute pipeline
             vulkan_app.device.cmd_bind_descriptor_sets(
-                *command_buffer, 
-                PipelineBindPoint::COMPUTE, 
-                self.base_attributes.pipeline_layout, 
-                0, 
-                &[self.base_attributes.descriptors.draw_image_descriptors], 
-                &[]
+                *command_buffer,
+                PipelineBindPoint::COMPUTE,
+                self.base_attributes.pipeline_layout,
+                0,
+                &[self.base_attributes.descriptors.draw_image_descriptors],
+                &[],
             );
 
             // execute the compute pipeline dispatch. We are using 16x16 workgroup size so we need to divide by it
             vulkan_app.device.cmd_dispatch(
-                *command_buffer, 
-                vulkan_app.draw_extent.width / 16, 
-                vulkan_app.draw_extent.height / 16, 
-                1
+                *command_buffer,
+                vulkan_app.draw_extent.width / 16,
+                vulkan_app.draw_extent.height / 16,
+                1,
             );
         }
     }
