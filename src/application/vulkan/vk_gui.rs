@@ -67,12 +67,17 @@ impl VulkanApp{
         let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
         platform.attach_window(imgui.io_mut(), &window, imgui_winit_support::HiDpiMode::Rounded);
 
+        let dynamic_rendering = imgui_rs_vulkan_renderer::DynamicRendering{
+            color_attachment_format: self.swapchain_image_format,
+            depth_attachment_format: None,
+        };
+
         let renderer = imgui_rs_vulkan_renderer::Renderer::with_vk_mem_allocator(
             self.allocator.allocator.clone(),
             self.device.clone(),
             self.queue_families.graphics_queue,
             self.gui_parameters.immediate_submit_struct.command_pool,
-            Default::default(),
+            dynamic_rendering,
             &mut imgui,
             Some(imgui_rs_vulkan_renderer::Options {
                 in_flight_frames: 1,
@@ -81,7 +86,7 @@ impl VulkanApp{
         ).unwrap();
 
         self.gui_parameters.renderer = Some(renderer);
-        self.gui_parameters.plateform = Some(platform);
+        self.gui_parameters.platform = Some(platform);
         self.gui_parameters.context = Some(imgui);
         
     }
@@ -92,7 +97,7 @@ impl VulkanApp{
             self.device.destroy_fence(self.gui_parameters.immediate_submit_struct.fence, None);
             self.device.destroy_descriptor_pool(self.gui_parameters.descriptor_pool, None);
             self.gui_parameters.context = None;
-            self.gui_parameters.plateform = None;
+            self.gui_parameters.platform = None;
             self.gui_parameters.renderer = None;
         };
     }

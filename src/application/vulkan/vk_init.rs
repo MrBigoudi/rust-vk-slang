@@ -104,6 +104,9 @@ impl VulkanApp {
             draw_extent,
             pipelines: Vec::new(),
             gui_parameters: Default::default(),
+
+            test_value: 0,
+            test_choices: vec![String::from("test test this is 1"), String::from("test test this is 2")],
         }
     }
 }

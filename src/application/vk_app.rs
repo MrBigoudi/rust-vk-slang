@@ -6,7 +6,7 @@ use ash::{
     ext::debug_utils,
     khr::{surface, swapchain},
     vk::{
-        self, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags, CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, DescriptorPool, Extent2D, Extent3D, Fence, Format, Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView, PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Semaphore, SemaphoreSubmitInfo, SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR, REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS
+        self, AttachmentLoadOp, AttachmentStoreOp, ClearColorValue, CommandBuffer, CommandBufferBeginInfo, CommandBufferResetFlags, CommandBufferSubmitInfo, CommandBufferUsageFlags, CommandPool, DescriptorPool, Extent2D, Extent3D, Fence, Format, Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView, Offset2D, PipelineStageFlags2, PresentInfoKHR, PresentModeKHR, Queue, Rect2D, RenderingAttachmentInfo, RenderingInfo, Semaphore, SemaphoreSubmitInfo, SubmitInfo2, SurfaceCapabilitiesKHR, SurfaceFormatKHR, SwapchainKHR, REMAINING_ARRAY_LAYERS, REMAINING_MIP_LEVELS
     },
     Device, Entry, Instance,
 };
@@ -80,7 +80,7 @@ pub struct GuiParameters{
     pub descriptor_pool: DescriptorPool,
 
     pub context: Option<imgui::Context>,
-    pub plateform: Option<imgui_winit_support::WinitPlatform>,
+    pub platform: Option<imgui_winit_support::WinitPlatform>,
     pub renderer: Option<imgui_rs_vulkan_renderer::Renderer>,
 }
 
@@ -120,6 +120,9 @@ pub struct VulkanApp {
     pub pipelines: Vec<Box<dyn ComputePipeline>>,
 
     pub gui_parameters: GuiParameters,
+
+    pub test_value: usize,
+    pub test_choices: Vec<String>,
 }
 
 pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [swapchain::NAME.as_ptr()];
@@ -157,6 +160,58 @@ impl SwapChainSupportDetails {
 }
 
 impl VulkanApp {
+    pub fn draw_gui(&mut self, command_buffer: &CommandBuffer, window: &winit::window::Window, target_image_view: &ImageView) {
+        // Generate UI
+        self.gui_parameters.platform.as_mut().unwrap()
+            .prepare_frame(self.gui_parameters.context.as_mut().unwrap().io_mut(), window)
+            .expect("Failed to prepare the GUI frame\n");
+        let ui = self.gui_parameters.context.as_mut().unwrap().frame();
+
+        ui.window("Hello world")
+            .size([300.0, 110.0], imgui::Condition::FirstUseEver)
+            .build(|| {
+                ui.text_wrapped("Hello world!");
+                if ui.button(self.test_choices[self.test_value].clone()) {
+                    self.test_value += 1;
+                    self.test_value %= 2;
+                }
+
+                ui.button("This...is...imgui-rs!");
+                ui.separator();
+                let mouse_pos = ui.io().mouse_pos;
+                ui.text(format!(
+                    "Mouse Position: ({:.1},{:.1})",
+                    mouse_pos[0], mouse_pos[1]
+                ))
+            })
+        ;
+
+        self.gui_parameters.platform.as_mut().unwrap().prepare_render(&ui, &window);
+        let draw_data = self.gui_parameters.context.as_mut().unwrap().render();
+
+        let rendering_attachement_info = [RenderingAttachmentInfo::default()
+            .image_view(*target_image_view)
+            .image_layout(ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+            .load_op(AttachmentLoadOp::LOAD)
+            .store_op(AttachmentStoreOp::STORE)
+        ];
+
+        let render_area = Rect2D {
+            offset: Offset2D { x: 0, y: 0},
+            extent: self.swapchain_extent,
+        };
+        let rendering_info = RenderingInfo::default()
+            .render_area(render_area)
+            .color_attachments(&rendering_attachement_info)
+            .layer_count(1)
+        ;
+
+        unsafe {self.device.cmd_begin_rendering(*command_buffer, &rendering_info);}
+        self.gui_parameters.renderer.as_mut().unwrap().cmd_draw(*command_buffer, draw_data).unwrap();
+        unsafe {self.device.cmd_end_rendering(*command_buffer);}
+        
+    }
+
     pub fn draw_background(&mut self, command_buffer: &CommandBuffer) {
         // background color
         let flash = (self.frame_number as f32 / 120.).sin().abs();
@@ -192,7 +247,7 @@ impl VulkanApp {
         self.pipelines = pipelines;
     }
 
-    pub fn draw(&mut self) {
+    pub fn draw(&mut self, window: &winit::window::Window) {
         let current_frame = *self.get_current_frame();
 
         let fences = &[current_frame.render_fence];
@@ -277,12 +332,24 @@ impl VulkanApp {
             &self.swapchain_extent,
         );
 
-        // set swapchain image layout to Present so we can show it on the screen
+        // set swapchain image layout to Attachment Optimal so we can draw it
         Self::transition_image(
             &self.device,
             &command_buffer,
             &self.swapchain_images[swapchain_image_index],
             &ImageLayout::TRANSFER_DST_OPTIMAL,
+            &ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+        );
+
+        let image_view = self.swapchain_image_views[swapchain_image_index];
+        self.draw_gui(&command_buffer, window, &image_view);
+
+        // set swapchain image layout to Present so we can show it on the screen
+        Self::transition_image(
+            &self.device,
+            &command_buffer,
+            &self.swapchain_images[swapchain_image_index],
+            &ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
             &ImageLayout::PRESENT_SRC_KHR,
         );
 
@@ -379,6 +446,15 @@ impl VulkanApp {
         debug!("Ok\n");
 
         let _ = event_loop.run(move |event, elwt| {
+            // gui input handler
+            application.gui_parameters.platform.as_mut().unwrap()
+                .handle_event(
+                    application.gui_parameters.context.as_mut().unwrap().io_mut(), 
+                    &window, 
+                    &event
+            );
+
+            // general handler
             match event {
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
@@ -393,7 +469,7 @@ impl VulkanApp {
                     event: WindowEvent::RedrawRequested,
                     ..
                 } => {
-                    application.draw();
+                    application.draw(&window);
                 }
                 _ => (),
             };
