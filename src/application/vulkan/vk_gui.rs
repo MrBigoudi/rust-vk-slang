@@ -38,6 +38,13 @@ impl VulkanApp {
         }
     }
 
+    fn load_font_data() -> &'static [u8] {
+        let crate_path = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
+        let font_path = format!("{}/src/assets/fonts/Roboto-Regular.ttf", crate_path);
+        let font_data = std::fs::read(font_path).expect("Failed to read font file");
+        Box::leak(font_data.into_boxed_slice())  // Leak the memory to get a static reference
+    }
+
     pub fn init_gui(&mut self, window: &Window) {
         self.init_gui_immediate_submit_structures();
 
@@ -92,6 +99,24 @@ impl VulkanApp {
         // initialize gui library
         let mut imgui = imgui::Context::create();
         let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
+
+        let hidpi_factor = platform.hidpi_factor();
+        let font_size = (13.0 * hidpi_factor) as f32;
+        imgui.fonts().add_font(&[
+            imgui::FontSource::DefaultFontData {
+                config: Some(imgui::FontConfig {
+                    size_pixels: font_size,
+                    ..imgui::FontConfig::default()
+                }),
+            },
+            imgui::FontSource::TtfData {
+                data: Self::load_font_data(),
+                size_pixels: font_size,
+                config: Some(imgui::FontConfig::default())
+            },
+        ]);
+        imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+
         platform.attach_window(
             imgui.io_mut(),
             window,
