@@ -1,8 +1,19 @@
 static const int DESCRIPTOR_SET = 0;
-static const int DESCRIPTOR_BINDING = 0;
+static const int DESCRIPTOR_BINDING_OUTPUT_IMAGE = 0;
+static const int DESCRIPTOR_BINDING_TRIANGLES = 1;
 
-[[vk::binding(DESCRIPTOR_SET, DESCRIPTOR_BINDING)]]
+[[vk::binding(DESCRIPTOR_BINDING_OUTPUT_IMAGE, DESCRIPTOR_SET)]]
 RWTexture2D<float4> gs_image;
+
+struct Triangle {
+    float4 p0;
+    float4 p1;
+    float4 p2;
+    uint model;
+};
+
+[[vk::binding(DESCRIPTOR_BINDING_TRIANGLES, DESCRIPTOR_SET)]]
+RWStructuredBuffer<Triangle> triangles;
 
 static const int THREAD_GROUP_SIZE_X = 16;
 static const int THREAD_GROUP_SIZE_Y = 16;
@@ -25,6 +36,7 @@ void main(uint3 threadId : SV_DispatchThreadID)
             color.y = float(texelCoord.y) / float(size.y);
         }
     
+        color = triangles[0].p1;
         gs_image[texelCoord] = color;
     }
 }

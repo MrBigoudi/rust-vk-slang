@@ -6,7 +6,7 @@ use ash::{
     ext::debug_utils,
     khr::{surface, swapchain},
     vk::{
-        self, AttachmentLoadOp, AttachmentStoreOp, ClearColorValue, CommandBuffer,
+        self, AttachmentLoadOp, AttachmentStoreOp, Buffer, ClearColorValue, CommandBuffer,
         CommandBufferBeginInfo, CommandBufferResetFlags, CommandBufferSubmitInfo,
         CommandBufferUsageFlags, CommandPool, DescriptorPool, Extent2D, Extent3D, Fence, Format,
         Image, ImageAspectFlags, ImageLayout, ImageSubresourceRange, ImageView, Offset2D,
@@ -25,7 +25,7 @@ use winit::{
     keyboard::{Key, NamedKey},
 };
 
-use super::pipelines::pipeline::ComputePipeline;
+use super::{pipelines::pipeline::ComputePipeline, scenes::scene::Scene};
 
 /// Structure to hold application parameters such as name, window width, and window height.
 pub struct AppParameters {
@@ -74,6 +74,11 @@ pub struct AllocatedImage {
     pub allocation: Allocation,
 }
 
+pub struct AllocatedBuffer {
+    pub buffer: Buffer,
+    pub allocation: Allocation,
+}
+
 #[derive(Default)]
 pub struct ImmediateSubmitStructures {
     pub fence: Fence,
@@ -83,7 +88,6 @@ pub struct ImmediateSubmitStructures {
 
 #[derive(Default)]
 pub struct GuiParameters {
-    pub immediate_submit_struct: ImmediateSubmitStructures,
     pub descriptor_pool: DescriptorPool,
 
     pub context: Option<imgui::Context>,
@@ -127,6 +131,9 @@ pub struct VulkanApp {
     pub pipelines: Vec<Box<dyn ComputePipeline>>,
 
     pub gui_parameters: GuiParameters,
+    pub immediate_submit: ImmediateSubmitStructures,
+
+    pub scene: Scene,
 }
 
 pub const DEVICE_EXTENSION_NAMES_RAW: [*const i8; 1] = [swapchain::NAME.as_ptr()];
@@ -453,8 +460,14 @@ impl VulkanApp {
 
         let mut application = Self::init(app_params, &window);
 
+        // init the scene
+        debug!("Init Scene...");
+        application.scene.init();
+        debug!("Ok\n");
+
         // init the compute pipelines in the correct order
         debug!("Init Pipelines...");
+        application.init_immediate_submit_structures();
         application.init_pipelines();
         debug!("Ok\n");
 

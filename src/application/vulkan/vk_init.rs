@@ -109,6 +109,8 @@ impl VulkanApp {
             draw_extent,
             pipelines: Vec::new(),
             gui_parameters: Default::default(),
+            immediate_submit: Default::default(),
+            scene: Default::default(),
         }
     }
 }
@@ -120,6 +122,7 @@ impl Drop for VulkanApp {
             self.device.device_wait_idle().unwrap();
         }
         self.clear_gui();
+        self.clear_immediate_submit_structures();
         self.clear_pipelines();
         self.clear_images();
         self.clear_frames();

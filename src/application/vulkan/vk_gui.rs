@@ -1,53 +1,19 @@
 use ash::vk::{
-    CommandBufferAllocateInfo, CommandPoolCreateFlags, CommandPoolCreateInfo,
     DescriptorPoolCreateFlags, DescriptorPoolCreateInfo, DescriptorPoolSize, DescriptorType,
-    FenceCreateFlags, FenceCreateInfo,
 };
 use winit::window::Window;
 
 use crate::application::vk_app::VulkanApp;
 
 impl VulkanApp {
-    fn init_gui_immediate_submit_structures(&mut self) {
-        let command_pool_info = CommandPoolCreateInfo::default()
-            .flags(CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
-            .queue_family_index(self.queue_families.graphics_family.unwrap());
-
-        unsafe {
-            self.gui_parameters.immediate_submit_struct.command_pool = self
-                .device
-                .create_command_pool(&command_pool_info, None)
-                .unwrap();
-        }
-
-        let allocate_info = CommandBufferAllocateInfo::default()
-            .command_buffer_count(1)
-            .command_pool(self.gui_parameters.immediate_submit_struct.command_pool);
-
-        unsafe {
-            self.gui_parameters.immediate_submit_struct.command_buffer = self
-                .device
-                .allocate_command_buffers(&allocate_info)
-                .unwrap()[0]
-        }
-
-        let fence_create_info = FenceCreateInfo::default().flags(FenceCreateFlags::SIGNALED);
-        unsafe {
-            self.gui_parameters.immediate_submit_struct.fence =
-                self.device.create_fence(&fence_create_info, None).unwrap()
-        }
-    }
-
     fn load_font_data() -> &'static [u8] {
-        let crate_path = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
+        let crate_path = env!("CARGO_MANIFEST_DIR");
         let font_path = format!("{}/src/assets/fonts/Roboto-Regular.ttf", crate_path);
         let font_data = std::fs::read(font_path).expect("Failed to read font file");
-        Box::leak(font_data.into_boxed_slice())  // Leak the memory to get a static reference
+        Box::leak(font_data.into_boxed_slice()) // Leak the memory to get a static reference
     }
 
     pub fn init_gui(&mut self, window: &Window) {
-        self.init_gui_immediate_submit_structures();
-
         // create descriptor pool for IMGUI
         let descriptor_pool_sizes = [
             DescriptorPoolSize::default()
@@ -112,7 +78,7 @@ impl VulkanApp {
             imgui::FontSource::TtfData {
                 data: Self::load_font_data(),
                 size_pixels: font_size,
-                config: Some(imgui::FontConfig::default())
+                config: Some(imgui::FontConfig::default()),
             },
         ]);
         imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
@@ -132,7 +98,7 @@ impl VulkanApp {
             self.allocator.allocator.clone(),
             self.device.clone(),
             self.queue_families.graphics_queue,
-            self.gui_parameters.immediate_submit_struct.command_pool,
+            self.immediate_submit.command_pool,
             dynamic_rendering,
             &mut imgui,
             Some(imgui_rs_vulkan_renderer::Options {
@@ -149,12 +115,6 @@ impl VulkanApp {
 
     pub fn clear_gui(&mut self) {
         unsafe {
-            self.device.destroy_command_pool(
-                self.gui_parameters.immediate_submit_struct.command_pool,
-                None,
-            );
-            self.device
-                .destroy_fence(self.gui_parameters.immediate_submit_struct.fence, None);
             self.device
                 .destroy_descriptor_pool(self.gui_parameters.descriptor_pool, None);
             self.gui_parameters.context = None;

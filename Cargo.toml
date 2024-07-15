@@ -17,3 +17,5 @@ imgui = { git = "https://github.com/imgui-rs/imgui-rs", features = [
     "tables-api",
 ] }
 imgui-winit-support = { git = "https://github.com/imgui-rs/imgui-rs" }
+glam = "0.28.0"
+tobj = "4.0.2"

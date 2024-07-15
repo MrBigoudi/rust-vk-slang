@@ -2,9 +2,7 @@ use std::ffi::CStr;
 
 use ash::{
     vk::{
-        ComputePipelineCreateInfo, DescriptorImageInfo, DescriptorSetLayoutCreateFlags,
-        DescriptorType, ImageLayout, PipelineBindPoint, PipelineCache, PipelineLayoutCreateInfo,
-        PipelineShaderStageCreateInfo, ShaderStageFlags, WriteDescriptorSet,
+        ComputePipelineCreateInfo, DescriptorBufferInfo, DescriptorImageInfo, DescriptorSetLayoutCreateFlags, DescriptorType, ImageLayout, PipelineBindPoint, PipelineCache, PipelineLayoutCreateInfo, PipelineShaderStageCreateInfo, ShaderStageFlags, WriteDescriptorSet, WHOLE_SIZE
     },
     Device,
 };
@@ -24,10 +22,16 @@ pub struct PipelineGradient {
 impl ComputePipeline for PipelineGradient {
     fn init_descriptors(&mut self, vulkan_app: &mut VulkanApp) {
         // create a descriptor pool that will hold 10 sets with 1 image each
-        let pool_size_ratios = [PoolSizeRatio {
-            descriptor_type: DescriptorType::STORAGE_IMAGE,
-            ratio: 1.0,
-        }];
+        let pool_size_ratios = [
+            PoolSizeRatio {
+                descriptor_type: DescriptorType::STORAGE_IMAGE,
+                ratio: 1.0,
+            },
+            PoolSizeRatio {
+                descriptor_type: DescriptorType::STORAGE_BUFFER,
+                ratio: 1.0,
+            },
+        ];
 
         let mut global_allocator_descriptor = DescriptorAllocator::default();
         global_allocator_descriptor.init_pool(&vulkan_app.device, 10, &pool_size_ratios);
@@ -35,25 +39,51 @@ impl ComputePipeline for PipelineGradient {
         // make the descriptor set layout for our compute draw
         let mut builder = DescriptorLayoutBuilder::default();
         builder.add_binding(0, DescriptorType::STORAGE_IMAGE);
-        let draw_image_descriptor_layout = builder.build(
+        // triangles buffer to GPU
+        builder.add_binding(1, DescriptorType::STORAGE_BUFFER);
+
+        let descriptor_set_layout = builder.build(
             &vulkan_app.device,
             ShaderStageFlags::COMPUTE,
             DescriptorSetLayoutCreateFlags::empty(),
         );
 
-        // allocate a descriptor set for our draw image
-        let draw_image_descriptors =
-            global_allocator_descriptor.allocate(&vulkan_app.device, &draw_image_descriptor_layout);
+        // allocate a descriptor set for our draw image and buffer
+        let descriptor_set =
+            global_allocator_descriptor.allocate(&vulkan_app.device, &descriptor_set_layout);
 
         let descriptor_image_info = [DescriptorImageInfo::default()
             .image_view(vulkan_app.draw_image.image_view)
             .image_layout(ImageLayout::GENERAL)];
-        let descriptor_writes = [WriteDescriptorSet::default()
-            .dst_binding(0)
-            .dst_set(draw_image_descriptors)
-            .descriptor_count(1)
-            .descriptor_type(DescriptorType::STORAGE_IMAGE)
-            .image_info(&descriptor_image_info)];
+
+        let scene_buffers_gpu = {
+            let scene = &vulkan_app.scene;
+            scene.upload_buffers(&vulkan_app)
+        };
+
+        let descriptor_buffer_info = [
+            DescriptorBufferInfo::default()
+                .buffer(scene_buffers_gpu.triangles_buffer.buffer.buffer)
+                .range(WHOLE_SIZE)
+                .offset(0),
+        ];
+
+        let descriptor_writes = [
+            // image binding in set 0
+            WriteDescriptorSet::default()
+                .dst_set(descriptor_set)
+                .dst_binding(0) // binding within the set
+                .descriptor_count(1)
+                .descriptor_type(DescriptorType::STORAGE_IMAGE)
+                .image_info(&descriptor_image_info),
+            // triangles buffer in set 0
+            WriteDescriptorSet::default()
+                .dst_set(descriptor_set)
+                .dst_binding(1) // binding within the set
+                .descriptor_count(1)
+                .descriptor_type(DescriptorType::STORAGE_BUFFER)
+                .buffer_info(&descriptor_buffer_info),
+        ];
 
         unsafe {
             vulkan_app
@@ -63,8 +93,8 @@ impl ComputePipeline for PipelineGradient {
 
         self.base_attributes.descriptors = Descriptors {
             global_allocator_descriptor,
-            draw_image_descriptors,
-            draw_image_descriptor_layout,
+            draw_image_descriptors: descriptor_set,
+            draw_image_descriptor_layout: descriptor_set_layout,
         }
     }
 

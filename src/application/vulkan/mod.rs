@@ -1,4 +1,5 @@
 pub mod vk_allocator;
+pub mod vk_buffer;
 pub mod vk_commands;
 pub mod vk_debug;
 pub mod vk_device;
@@ -6,6 +7,7 @@ pub mod vk_entry;
 pub mod vk_frames;
 pub mod vk_gui;
 pub mod vk_image;
+pub mod vk_immediate;
 pub mod vk_init;
 pub mod vk_instance;
 pub mod vk_physical_device;
