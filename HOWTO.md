@@ -10,8 +10,6 @@ To run in build mode:
 cargo run
 ```
 
-To compile shaders:
-```sh
-cd src/shaders
-slangc raytracing.slang -emit-spirv-directly -g2 -profile glsl_460 -target spirv -o raytracing.spv -entry main
-```
+## Shaders
+
+The shaders are automatically built using the `build.rs` script.

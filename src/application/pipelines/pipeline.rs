@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use ash::vk::{CommandBuffer, DescriptorSet, DescriptorSetLayout, Pipeline, PipelineLayout};
 use ash::{
     util::read_spv,
@@ -26,6 +28,12 @@ pub struct PipelineAttributes {
 pub struct PipelineUtils;
 
 impl PipelineUtils {
+    pub fn get_compiled_shader_path(shader: &str) -> String {
+        let base_path = Path::new("/target/shaders");
+        let relative_path = Path::new(shader);
+        base_path.join(relative_path).with_extension("spv").to_string_lossy().into_owned()
+    }
+
     pub fn load_shader_module(file_path: String, device: &Device) -> ShaderModule {
         let crate_path = env!("CARGO_MANIFEST_DIR");
         let spv_path = crate_path.to_owned() + &file_path;

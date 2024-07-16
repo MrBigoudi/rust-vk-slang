@@ -172,7 +172,7 @@ impl ComputePipeline for PipelineRaytracing {
 
     fn create_compute_pipeline(&mut self, vulkan_app: &mut VulkanApp) {
         let shader_module = PipelineUtils::load_shader_module(
-            String::from("/src/shaders/raytracing.spv"),
+            PipelineUtils::get_compiled_shader_path("raytracing.slang"),
             &vulkan_app.device,
         );
         let shader_stage_create_info = PipelineShaderStageCreateInfo::default()

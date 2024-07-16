@@ -8,7 +8,7 @@ pub struct Material {
 impl Default for Material {
     fn default() -> Self {
         Self {
-            albedo: Vec4::from_array([0., 0., 0., 1.]),
+            albedo: Vec4::from_array([1., 1., 1., 1.]),
         }
     }
 }
