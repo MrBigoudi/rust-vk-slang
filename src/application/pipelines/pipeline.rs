@@ -31,7 +31,11 @@ impl PipelineUtils {
     pub fn get_compiled_shader_path(shader: &str) -> String {
         let base_path = Path::new("/target/shaders");
         let relative_path = Path::new(shader);
-        base_path.join(relative_path).with_extension("spv").to_string_lossy().into_owned()
+        base_path
+            .join(relative_path)
+            .with_extension("spv")
+            .to_string_lossy()
+            .into_owned()
     }
 
     pub fn load_shader_module(file_path: String, device: &Device) -> ShaderModule {

@@ -1,12 +1,10 @@
-use std::process::Command;
 use std::fs::create_dir_all;
 use std::path::Path;
+use std::process::Command;
 
 fn main() {
     // Specify the list of shaders and their entry points
-    let shaders = vec![
-        ("src/shaders/raytracing.slang", "main"),
-    ];
+    let shaders = vec![("src/shaders/raytracing.slang", "main")];
 
     // Define the base output directory
     let out_dir = Path::new("target/shaders");
@@ -34,13 +32,14 @@ fn main() {
             .arg(&output_path)
             .arg("-entry")
             .arg(entry_point)
-            .status().unwrap();
+            .status()
+            .unwrap();
 
         if !status.success() {
             panic!("Shader compilation failed for {}", shader);
         }
     }
-    
+
     // rerun when shaders change
     println!("cargo:rerun-if-changed=src/shaders");
 }

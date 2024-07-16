@@ -7,6 +7,7 @@ pub struct Scene {
     pub triangles: Vec<Triangle>,
     pub models: Vec<Model>,
     pub materials: Vec<Material>,
+    pub buffers: Option<SceneBuffers>,
 }
 
 pub struct SceneBuffers {
@@ -26,6 +27,16 @@ impl Scene {
         let (model, triangles) = Model::triangle();
         self.models.push(model);
         self.triangles = triangles;
+    }
+
+    pub fn clear(&mut self, allocator: &vk_mem::Allocator) {
+        let buffers = match self.buffers {
+            None => return,
+            Some(ref mut buffers) => buffers,
+        };
+        VulkanApp::clear_buffer(allocator, &mut buffers.triangles_buffer.buffer);
+        VulkanApp::clear_buffer(allocator, &mut buffers.models_buffer.buffer);
+        VulkanApp::clear_buffer(allocator, &mut buffers.materials_buffer.buffer);
     }
 
     pub fn add_existing_model(&mut self, model_id: usize) {

@@ -121,6 +121,10 @@ impl Drop for VulkanApp {
         unsafe {
             self.device.device_wait_idle().unwrap();
         }
+        {
+            let scene = &mut self.scene;
+            scene.clear(&self.allocator.allocator.lock().unwrap());
+        };
         self.clear_gui();
         self.clear_immediate_submit_structures();
         self.clear_pipelines();

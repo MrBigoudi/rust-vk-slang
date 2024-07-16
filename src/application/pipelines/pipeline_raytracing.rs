@@ -127,6 +127,8 @@ impl ComputePipeline for PipelineRaytracing {
                 .buffer_info(&descriptor_materials_buffer_info),
         ];
 
+        vulkan_app.scene.buffers = Some(scene_buffers_gpu);
+
         unsafe {
             vulkan_app
                 .device

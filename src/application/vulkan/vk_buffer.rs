@@ -36,9 +36,8 @@ impl VulkanApp {
         AllocatedBuffer { buffer, allocation }
     }
 
-    pub fn clear_buffer(&self, buffer: &mut AllocatedBuffer) {
+    pub fn clear_buffer(allocator: &vk_mem::Allocator, buffer: &mut AllocatedBuffer) {
         unsafe {
-            let allocator = self.allocator.allocator.lock().unwrap();
             allocator.destroy_buffer(buffer.buffer, &mut buffer.allocation);
         }
     }
@@ -106,8 +105,10 @@ impl BufferGPU {
         });
 
         // Lock the allocator again to destroy the staging buffer
-        let allocator = application.allocator.allocator.lock().unwrap();
-        unsafe { allocator.destroy_buffer(staging.buffer, &mut staging.allocation) };
+        VulkanApp::clear_buffer(
+            &application.allocator.allocator.lock().unwrap(),
+            &mut staging,
+        );
 
         surface
     }
