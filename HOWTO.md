@@ -13,5 +13,5 @@ cargo run
 To compile shaders:
 ```sh
 cd src/shaders
-slangc gradient.slang -emit-spirv-directly -g2 -profile glsl_460 -target spirv -o gradient.spv -entry main
+slangc raytracing.slang -emit-spirv-directly -g2 -profile glsl_460 -target spirv -o raytracing.spv -entry main
 ```

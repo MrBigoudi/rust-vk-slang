@@ -1,10 +1,10 @@
 use crate::application::vk_app::VulkanApp;
 
-use super::{pipeline::ComputePipeline, pipeline_gradient::PipelineGradient};
+use super::{pipeline::ComputePipeline, pipeline_raytracing::PipelineRaytracing};
 
 impl VulkanApp {
     pub fn init_pipelines(&mut self) {
-        let mut gradient_pipeline: PipelineGradient = Default::default();
+        let mut gradient_pipeline: PipelineRaytracing = Default::default();
         gradient_pipeline.init(self);
 
         self.pipelines = vec![Box::new(gradient_pipeline)]

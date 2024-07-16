@@ -38,7 +38,7 @@ impl Scene {
     }
 
     pub fn add_model(&mut self, obj_path: String) {
-        // TODO: fix this 
+        // TODO: fix this
         // read obj file
         let crate_path = env!("CARGO_MANIFEST_DIR");
         let model_path = crate_path.to_owned() + &obj_path;
@@ -84,8 +84,7 @@ impl Scene {
             // Normals and texture coordinates are also loaded, but not printed in this example
             println!("model[{}].vertices: {}", i, mesh.positions.len() / 3);
             assert!(mesh.positions.len() % 3 == 0);
-            for _ in 0..mesh.positions.len() / 3 {
-            }
+            for _ in 0..mesh.positions.len() / 3 {}
         }
 
         for (i, m) in materials.iter().enumerate() {

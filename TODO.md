@@ -1,4 +1,5 @@
 # TODO list
 
-- loading obj
-- sending buffers to shaders
+- compile script
+- fix loading obj
+- fixing vma layer

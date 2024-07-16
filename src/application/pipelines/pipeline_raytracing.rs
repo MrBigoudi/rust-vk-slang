@@ -2,7 +2,10 @@ use std::ffi::CStr;
 
 use ash::{
     vk::{
-        ComputePipelineCreateInfo, DescriptorBufferInfo, DescriptorImageInfo, DescriptorSetLayoutCreateFlags, DescriptorType, ImageLayout, PipelineBindPoint, PipelineCache, PipelineLayoutCreateInfo, PipelineShaderStageCreateInfo, ShaderStageFlags, WriteDescriptorSet, WHOLE_SIZE
+        ComputePipelineCreateInfo, DescriptorBufferInfo, DescriptorImageInfo,
+        DescriptorSetLayoutCreateFlags, DescriptorType, ImageLayout, PipelineBindPoint,
+        PipelineCache, PipelineLayoutCreateInfo, PipelineShaderStageCreateInfo, ShaderStageFlags,
+        WriteDescriptorSet, WHOLE_SIZE,
     },
     Device,
 };
@@ -15,18 +18,29 @@ use super::{
 };
 
 #[derive(Default)]
-pub struct PipelineGradient {
+pub struct PipelineRaytracing {
     pub base_attributes: PipelineAttributes,
 }
 
-impl ComputePipeline for PipelineGradient {
+impl ComputePipeline for PipelineRaytracing {
     fn init_descriptors(&mut self, vulkan_app: &mut VulkanApp) {
-        // create a descriptor pool that will hold 10 sets with 1 image each
         let pool_size_ratios = [
+            // framebuffer
             PoolSizeRatio {
                 descriptor_type: DescriptorType::STORAGE_IMAGE,
                 ratio: 1.0,
             },
+            // triangles buffer
+            PoolSizeRatio {
+                descriptor_type: DescriptorType::STORAGE_BUFFER,
+                ratio: 1.0,
+            },
+            // models buffer
+            PoolSizeRatio {
+                descriptor_type: DescriptorType::STORAGE_BUFFER,
+                ratio: 1.0,
+            },
+            // materials buffer
             PoolSizeRatio {
                 descriptor_type: DescriptorType::STORAGE_BUFFER,
                 ratio: 1.0,
@@ -38,9 +52,14 @@ impl ComputePipeline for PipelineGradient {
 
         // make the descriptor set layout for our compute draw
         let mut builder = DescriptorLayoutBuilder::default();
+        // framebuffer
         builder.add_binding(0, DescriptorType::STORAGE_IMAGE);
-        // triangles buffer to GPU
+        // triangles buffer
         builder.add_binding(1, DescriptorType::STORAGE_BUFFER);
+        // models buffer
+        builder.add_binding(2, DescriptorType::STORAGE_BUFFER);
+        // materials buffer
+        builder.add_binding(3, DescriptorType::STORAGE_BUFFER);
 
         let descriptor_set_layout = builder.build(
             &vulkan_app.device,
@@ -48,41 +67,64 @@ impl ComputePipeline for PipelineGradient {
             DescriptorSetLayoutCreateFlags::empty(),
         );
 
+        let scene_buffers_gpu = {
+            let scene = &vulkan_app.scene;
+            scene.upload_buffers(vulkan_app)
+        };
+
         // allocate a descriptor set for our draw image and buffer
         let descriptor_set =
             global_allocator_descriptor.allocate(&vulkan_app.device, &descriptor_set_layout);
 
-        let descriptor_image_info = [DescriptorImageInfo::default()
+        // frame buffer
+        let descriptor_framebuffer_info = [DescriptorImageInfo::default()
             .image_view(vulkan_app.draw_image.image_view)
             .image_layout(ImageLayout::GENERAL)];
-
-        let scene_buffers_gpu = {
-            let scene = &vulkan_app.scene;
-            scene.upload_buffers(&vulkan_app)
-        };
-
-        let descriptor_buffer_info = [
-            DescriptorBufferInfo::default()
-                .buffer(scene_buffers_gpu.triangles_buffer.buffer.buffer)
-                .range(WHOLE_SIZE)
-                .offset(0),
-        ];
+        // triangles buffer
+        let descriptor_triangles_buffer_info = [DescriptorBufferInfo::default()
+            .buffer(scene_buffers_gpu.triangles_buffer.buffer.buffer)
+            .range(WHOLE_SIZE)
+            .offset(0)];
+        // models buffer
+        let descriptor_models_buffer_info = [DescriptorBufferInfo::default()
+            .buffer(scene_buffers_gpu.models_buffer.buffer.buffer)
+            .range(WHOLE_SIZE)
+            .offset(0)];
+        // materials buffer
+        let descriptor_materials_buffer_info = [DescriptorBufferInfo::default()
+            .buffer(scene_buffers_gpu.materials_buffer.buffer.buffer)
+            .range(WHOLE_SIZE)
+            .offset(0)];
 
         let descriptor_writes = [
-            // image binding in set 0
+            // framebuffer binding in set 0
             WriteDescriptorSet::default()
                 .dst_set(descriptor_set)
                 .dst_binding(0) // binding within the set
                 .descriptor_count(1)
                 .descriptor_type(DescriptorType::STORAGE_IMAGE)
-                .image_info(&descriptor_image_info),
+                .image_info(&descriptor_framebuffer_info),
             // triangles buffer in set 0
             WriteDescriptorSet::default()
                 .dst_set(descriptor_set)
                 .dst_binding(1) // binding within the set
                 .descriptor_count(1)
                 .descriptor_type(DescriptorType::STORAGE_BUFFER)
-                .buffer_info(&descriptor_buffer_info),
+                .buffer_info(&descriptor_triangles_buffer_info),
+            // models buffer in set 0
+            WriteDescriptorSet::default()
+                .dst_set(descriptor_set)
+                .dst_binding(2) // binding within the set
+                .descriptor_count(1)
+                .descriptor_type(DescriptorType::STORAGE_BUFFER)
+                .buffer_info(&descriptor_models_buffer_info),
+            // materials buffer in set 0
+            WriteDescriptorSet::default()
+                .dst_set(descriptor_set)
+                .dst_binding(3) // binding within the set
+                .descriptor_count(1)
+                .descriptor_type(DescriptorType::STORAGE_BUFFER)
+                .buffer_info(&descriptor_materials_buffer_info),
         ];
 
         unsafe {
@@ -130,7 +172,7 @@ impl ComputePipeline for PipelineGradient {
 
     fn create_compute_pipeline(&mut self, vulkan_app: &mut VulkanApp) {
         let shader_module = PipelineUtils::load_shader_module(
-            String::from("/src/shaders/gradient.spv"),
+            String::from("/src/shaders/raytracing.spv"),
             &vulkan_app.device,
         );
         let shader_stage_create_info = PipelineShaderStageCreateInfo::default()

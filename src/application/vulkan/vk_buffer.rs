@@ -1,6 +1,4 @@
-use ash::vk::{
-    BufferCopy, BufferCreateInfo, BufferDeviceAddressInfo, BufferUsageFlags, DeviceAddress,
-};
+use ash::vk::{BufferCopy, BufferCreateInfo, BufferUsageFlags, DeviceAddress};
 use vk_mem::Alloc;
 use vk_mem::{AllocationCreateFlags, AllocationCreateInfo, MemoryUsage};
 
@@ -47,15 +45,14 @@ impl VulkanApp {
 }
 
 impl BufferGPU {
-    pub fn upload_elements<T>(elements: &[T], application: & VulkanApp) -> BufferGPU {
+    pub fn upload_elements<T>(elements: &[T], application: &VulkanApp) -> BufferGPU {
         let size = std::mem::size_of_val(elements);
 
         // create triangles buffer
         let buffer = application.create_buffer(
             size,
-            BufferUsageFlags::STORAGE_BUFFER
-                | BufferUsageFlags::TRANSFER_DST,
-                // | BufferUsageFlags::SHADER_DEVICE_ADDRESS,
+            BufferUsageFlags::STORAGE_BUFFER | BufferUsageFlags::TRANSFER_DST,
+            // | BufferUsageFlags::SHADER_DEVICE_ADDRESS,
             vk_mem::MemoryUsage::GpuOnly,
         );
 
