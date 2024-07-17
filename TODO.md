@@ -1,6 +1,5 @@
 # TODO list
 
-- implement raytracing slang (hits, rays, ...)
 - implement camera
-- add push constants (with camera info)
+- add push constants (with camera info and number of elements)
 - fix loading obj

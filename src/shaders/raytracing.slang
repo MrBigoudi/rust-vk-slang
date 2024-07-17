@@ -1,4 +1,5 @@
 import scene.scene; 
+import raytracer.raytracer; 
 
 //////////// FRAMEBUFFER
 static const int DESCRIPTOR_SET_FRAMEBUFFER = 0;
@@ -39,15 +40,26 @@ static const int THREAD_GROUP_SIZE_Z = 1;
 
 [shader("compute")]
 [numthreads(THREAD_GROUP_SIZE_X, THREAD_GROUP_SIZE_Y, THREAD_GROUP_SIZE_Z)]
-void main(uint3 threadId : SV_DispatchThreadID)
-{
-    uint2 texelCoord = threadId.xy;
-	uint2 size = uint2(0, 0); // initialize to arbitrary value
-    _Framebuffer.GetDimensions(size.x, size.y); // get size from bound image
+void main(uint3 thread_id : SV_DispatchThreadID) {
+    uint2 texel_coord = thread_id.xy;
 
-    if(texelCoord.x < size.x && texelCoord.y < size.y)
-    {
-        float4 color = _Materials[_Models[_Triangles[0].model_index].material_index].albedo;
-        _Framebuffer[texelCoord] = color;
-    }
+    uint2 size = uint2(0, 0); 
+    _Framebuffer.GetDimensions(size.x, size.y);
+
+    float2 pixel_position = float2(0.f);
+    pixel_position.x = float(texel_coord.x) / float(size.x);
+    pixel_position.y = float(texel_coord.y) / float(size.y);
+
+    Ray ray = get_ray(pixel_position, Camera());
+
+    // no bvh
+    Hit closest_hit;
+    closest_hit.did_hit = 0;
+    uint nb_triangles = 1;
+    get_closest_hit(ray, nb_triangles, closest_hit, _Triangles, _Models);
+
+    float4 color = float4(0.f, 0.f, 0.f, 1.f);
+    get_color(closest_hit, color, _Triangles, _Models, _Materials);
+
+    _Framebuffer[texel_coord] = color;
 }
