@@ -1,18 +1,22 @@
+use std::sync::Mutex;
+
 use ash::vk::{
     DescriptorPoolCreateFlags, DescriptorPoolCreateInfo, DescriptorPoolSize, DescriptorType,
 };
+use once_cell::sync::Lazy;
 use winit::window::Window;
 
 use crate::application::vk_app::VulkanApp;
 
-impl VulkanApp {
-    fn load_font_data() -> &'static [u8] {
-        let crate_path = env!("CARGO_MANIFEST_DIR");
-        let font_path = format!("{}/src/assets/fonts/Roboto-Regular.ttf", crate_path);
-        let font_data = std::fs::read(font_path).expect("Failed to read font file");
-        Box::leak(font_data.into_boxed_slice()) // Leak the memory to get a static reference
-    }
+static FONT_DATA_GLOBAL: Lazy<Mutex<Vec<u8>>> = Lazy::new(|| Mutex::new(load_font_data()));
 
+fn load_font_data() -> Vec<u8> {
+    let crate_path = env!("CARGO_MANIFEST_DIR");
+    let font_path = format!("{}/src/assets/fonts/Roboto-Regular.ttf", crate_path);
+    std::fs::read(font_path).expect("Failed to read font file")
+}
+
+impl VulkanApp {
     pub fn init_gui(&mut self, window: &Window) {
         // create descriptor pool for IMGUI
         let descriptor_pool_sizes = [
@@ -76,7 +80,7 @@ impl VulkanApp {
                 }),
             },
             imgui::FontSource::TtfData {
-                data: Self::load_font_data(),
+                data: FONT_DATA_GLOBAL.lock().unwrap().as_slice(),
                 size_pixels: font_size,
                 config: Some(imgui::FontConfig::default()),
             },

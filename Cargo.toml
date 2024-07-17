@@ -19,3 +19,4 @@ imgui = { git = "https://github.com/imgui-rs/imgui-rs", features = [
 imgui-winit-support = { git = "https://github.com/imgui-rs/imgui-rs" }
 glam = "0.28.0"
 tobj = "4.0.2"
+once_cell = "1.19.0"
