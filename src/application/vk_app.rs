@@ -23,9 +23,13 @@ use winit::{
     event::{ElementState, Event, KeyEvent, WindowEvent},
     event_loop::EventLoopWindowTarget,
     keyboard::{Key, NamedKey},
+    platform::modifier_supplement::KeyEventExtModifierSupplement,
 };
 
-use super::{pipelines::pipeline::ComputePipeline, scenes::scene::Scene};
+use super::{
+    pipelines::pipeline::ComputePipeline,
+    scenes::{camera::CameraMovement, scene::Scene},
+};
 
 /// Structure to hold application parameters such as name, window width, and window height.
 pub struct AppParameters {
@@ -431,22 +435,52 @@ impl VulkanApp {
         self.frame_number += 1;
     }
 
+    pub fn camera_input_handler(&mut self, key_event: &KeyEvent) {
+        let dt = 1. / 60.;
+        match key_event.key_without_modifiers().as_ref() {
+            Key::Character("W") => {
+                let camera = &mut self.scene.camera.as_mut().unwrap();
+                camera.process_keyboard(CameraMovement::FORWARD, dt);
+            }
+            Key::Character("S") => {
+                let camera = &mut self.scene.camera.as_mut().unwrap();
+                camera.process_keyboard(CameraMovement::BACKWARD, dt);
+            }
+            Key::Character("A") => {
+                let camera = &mut self.scene.camera.as_mut().unwrap();
+                camera.process_keyboard(CameraMovement::LEFT, dt);
+            }
+            Key::Character("D") => {
+                let camera = &mut self.scene.camera.as_mut().unwrap();
+                camera.process_keyboard(CameraMovement::RIGHT, dt);
+            }
+            Key::Named(NamedKey::ArrowUp) => {
+                let camera = &mut self.scene.camera.as_mut().unwrap();
+                camera.process_keyboard(CameraMovement::UP, dt);
+            }
+            Key::Named(NamedKey::ArrowDown) => {
+                let camera = &mut self.scene.camera.as_mut().unwrap();
+                camera.process_keyboard(CameraMovement::DOWN, dt);
+            }
+            _ => (),
+        }
+    }
+
     pub fn input_handler(&mut self, event: &Event<()>, elwt: &EventLoopWindowTarget<()>) {
-        if let Event::WindowEvent {
-            event:
-                WindowEvent::KeyboardInput {
-                    event:
-                        KeyEvent {
-                            state: ElementState::Pressed,
-                            logical_key: Key::Named(NamedKey::Escape),
-                            ..
-                        },
-                    ..
-                },
-            ..
-        } = event
-        {
-            elwt.exit();
+        if let Event::WindowEvent { event, .. } = event {
+            let window_event = event;
+            if let WindowEvent::KeyboardInput { event, .. } = window_event {
+                let key_event = event;
+                if key_event.state == ElementState::Pressed {
+                    // Handle camera input
+                    self.camera_input_handler(key_event);
+
+                    // Handle Escape key to exit
+                    if let Key::Named(NamedKey::Escape) = key_event.logical_key {
+                        elwt.exit();
+                    }
+                }
+            }
         }
     }
 

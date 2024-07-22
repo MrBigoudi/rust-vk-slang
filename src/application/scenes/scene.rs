@@ -1,6 +1,6 @@
 use crate::application::{vk_app::VulkanApp, vulkan::vk_buffer::BufferGPU};
 
-use super::{material::Material, model::Model, triangle::Triangle};
+use super::{camera::Camera, material::Material, model::Model, triangle::Triangle};
 
 #[derive(Default)]
 pub struct Scene {
@@ -8,6 +8,8 @@ pub struct Scene {
     pub models: Vec<Model>,
     pub materials: Vec<Material>,
     pub buffers: Option<SceneBuffers>,
+
+    pub camera: Option<Camera>,
 }
 
 pub struct SceneBuffers {
@@ -27,6 +29,9 @@ impl Scene {
         let (model, triangles) = Model::triangle();
         self.models.push(model);
         self.triangles = triangles;
+
+        // init the camera
+        self.camera = Some(Camera::default());
     }
 
     pub fn clear(&mut self, allocator: &vk_mem::Allocator) {
